@@ -51,8 +51,19 @@ Init: OUTPUT=0x05, CONFIG=0xF8
 #define CODEC_DEFAULT_CHANNEL      2
 \`\`\`
 
+## BSP Header — CRITICAL
+The BSP header for this board is **esp32_s3_szp.h**.
+Always include it as:
+\`\`\`c
+#include "esp32_s3_szp.h"
+\`\`\`
+**NEVER** use bsp/bsp.h, bsp_board.h, or any other path — those do not exist.
+The BSP is a pre-compiled component; no extra idf_component.yml entry needed.
+
 ## BSP Functions
 \`\`\`c
+#include "esp32_s3_szp.h"
+
 bsp_i2c_init()
 pca9557_init()        // MUST be first before LCD/audio/camera
 lcd_cs(int level)     // via PCA9557 P0

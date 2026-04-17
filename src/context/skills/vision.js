@@ -3,7 +3,7 @@ export const visionSkill = {
   id: 'vision',
   label: '人脸/目标检测',
   projectConfig: {
-    srcs: ['who_human_face_detection.cpp', 'who_ai_utils.cpp', 'esp32_s3_szp.c'],
+    srcs: ['who_human_face_detection.cpp', 'who_ai_utils.cpp'],
     mainExt: 'cpp',
     sdkconfig: [
       'CONFIG_SPIRAM=y',

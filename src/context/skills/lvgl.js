@@ -3,7 +3,7 @@ export const lvglSkill = {
   id: 'lvgl',
   label: 'LVGL 显示',
   projectConfig: {
-    srcs: ['esp32_s3_szp.c'],
+    srcs: [],
     sdkconfig: [
       'CONFIG_SPIRAM=y',
       'CONFIG_SPIRAM_MODE_OCT=y',

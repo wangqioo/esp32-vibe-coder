@@ -219,3 +219,24 @@
 .ble-bar {
   background: #a78bda !important;
 }
+
+.build-log-wrap {
+  margin: 8px 0;
+  max-height: 220px;
+  overflow-y: auto;
+  background: #0d1117;
+  border: 1px solid var(--border-muted);
+  border-radius: 6px;
+}
+
+.build-log {
+  margin: 0;
+  padding: 8px 12px;
+  font-family: 'Menlo', 'Monaco', 'Consolas', monospace;
+  font-size: 11px;
+  line-height: 1.5;
+  color: #8b949e;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+

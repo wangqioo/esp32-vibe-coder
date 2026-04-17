@@ -3,7 +3,7 @@ export const cameraSkill = {
   id: 'camera',
   label: '摄像头 (GC0308)',
   projectConfig: {
-    srcs: ['esp32_s3_szp.c'],
+    srcs: [],
     sdkconfig: [
       'CONFIG_SPIRAM=y',
       'CONFIG_SPIRAM_MODE_OCT=y',

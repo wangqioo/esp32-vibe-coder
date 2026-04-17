@@ -4,7 +4,7 @@ export const imuSkill = {
   id: 'imu',
   label: 'IMU (QMI8658)',
   projectConfig: {
-    srcs: ['esp32_s3_szp.c'],
+    srcs: [],
     sdkconfig: [],
     idfComponents: [],
     partitions: null,

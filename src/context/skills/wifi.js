@@ -3,7 +3,7 @@ export const wifiSkill = {
   id: 'wifi',
   label: 'WiFi',
   projectConfig: {
-    srcs: ['esp32_s3_szp.c'],
+    srcs: [],
     sdkconfig: [
       'CONFIG_SPIRAM=y',
       'CONFIG_SPIRAM_MODE_OCT=y',

@@ -30,4 +30,4 @@ COPY server.py .
 EXPOSE 8765
 
 ENTRYPOINT ["/bin/bash", "-c", \
-    "source /opt/esp/idf/export.sh && gunicorn -w 2 -b 0.0.0.0:8765 --timeout 180 server:app"]
+    "source /opt/esp/idf/export.sh && gunicorn -w 2 -b 0.0.0.0:8760 --timeout 180 server:app"]

@@ -3,7 +3,7 @@ export const audioSkill = {
   id: 'audio',
   label: '音频 (ES8311/ES7210)',
   projectConfig: {
-    srcs: ['esp32_s3_szp.c'],
+    srcs: [],
     sdkconfig: [
       'CONFIG_SPIRAM=y',
       'CONFIG_SPIRAM_MODE_OCT=y',
