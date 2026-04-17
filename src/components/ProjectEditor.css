@@ -5,7 +5,7 @@
   overflow: hidden;
 }
 
-/* Tab bar */
+/* Source file tab bar */
 .pe-tabs {
   display: flex;
   align-items: stretch;
@@ -29,7 +29,7 @@
 .pe-tab {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
   padding: 0 12px 0 14px;
   font-size: 12px;
   font-family: var(--font-mono);
@@ -41,18 +41,15 @@
   transition: background 0.1s, color 0.1s;
   flex-shrink: 0;
 }
-
 .pe-tab:hover { background: var(--bg-hover); color: var(--text-secondary); }
-
 .pe-tab.active {
   background: var(--bg-primary);
   color: var(--text-primary);
   border-bottom: 2px solid var(--accent);
   margin-bottom: -1px;
 }
-
-.pe-tab.config { color: var(--text-muted); font-style: italic; }
-.pe-tab.config.active { color: var(--text-secondary); border-bottom-color: var(--orange); }
+.pe-tab.config { font-style: italic; }
+.pe-tab.config.active { border-bottom-color: var(--orange); }
 
 .pe-tab-close {
   font-size: 14px;
@@ -60,9 +57,16 @@
   color: var(--text-muted);
   border-radius: 3px;
   padding: 0 2px;
-  margin-left: 2px;
 }
 .pe-tab-close:hover { background: var(--bg-hover); color: var(--text-primary); }
+
+.pe-tab-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--orange);
+  flex-shrink: 0;
+}
 
 .pe-tabs-actions {
   display: flex;
@@ -81,7 +85,6 @@
   height: 24px;
   border-radius: 4px;
   font-size: 16px;
-  line-height: 1;
   display: flex; align-items: center; justify-content: center;
   transition: all 0.15s;
 }
@@ -100,7 +103,57 @@
 }
 .pe-compile-btn:hover { background: var(--accent-hover); }
 
-/* Config notice */
+/* Config files collapsible row */
+.pe-config-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-muted);
+  flex-shrink: 0;
+  min-height: 28px;
+  padding: 0;
+}
+
+.pe-config-toggle {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: none;
+  border: none;
+  border-right: 1px solid var(--border-muted);
+  color: var(--text-muted);
+  font-size: 11px;
+  padding: 0 10px;
+  height: 28px;
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+  transition: color 0.15s;
+  flex-shrink: 0;
+}
+.pe-config-toggle:hover { color: var(--text-secondary); }
+.pe-config-toggle.open { color: var(--orange); }
+
+.pe-config-toggle-arrow { font-size: 10px; }
+
+.pe-config-count {
+  background: var(--bg-tertiary);
+  color: var(--text-muted);
+  font-size: 10px;
+  padding: 1px 5px;
+  border-radius: 8px;
+  border: 1px solid var(--border-muted);
+}
+
+.pe-config-bar .pe-tab {
+  height: 28px;
+  font-size: 11px;
+  padding: 0 10px 0 12px;
+}
+
+/* Config notice banner */
 .pe-config-notice {
   background: rgba(240, 136, 62, 0.08);
   border-bottom: 1px solid rgba(240, 136, 62, 0.2);
