@@ -1,7 +1,14 @@
-// GPIO / 按键 skill — from 01-boot_key official example
+
 export const gpioSkill = {
   id: 'gpio',
   label: 'GPIO / 按键',
+  projectConfig: {
+    srcs: [],
+    sdkconfig: [],
+    idfComponents: [],
+    partitions: null,
+    spiffs: false,
+  },
   systemPrompt: `## GPIO & 按键中断
 
 ### BOOT 按键 (GPIO0)
@@ -22,9 +29,8 @@ static void IRAM_ATTR gpio_isr_handler(void *arg) {
 static void gpio_task(void *arg) {
     uint32_t io_num;
     for (;;) {
-        if (xQueueReceive(gpio_evt_queue, &io_num, portMAX_DELAY)) {
+        if (xQueueReceive(gpio_evt_queue, &io_num, portMAX_DELAY))
             printf("GPIO[%d] val=%d\\n", io_num, gpio_get_level(io_num));
-        }
     }
 }
 
@@ -33,11 +39,9 @@ void app_main(void) {
         .intr_type    = GPIO_INTR_NEGEDGE,
         .mode         = GPIO_MODE_INPUT,
         .pin_bit_mask = 1ULL << GPIO_NUM_0,
-        .pull_down_en = 0,
         .pull_up_en   = 1,
     };
     gpio_config(&cfg);
-
     gpio_evt_queue = xQueueCreate(10, sizeof(uint32_t));
     xTaskCreate(gpio_task, "gpio_task", 2048, NULL, 10, NULL);
     gpio_install_isr_service(0);
@@ -46,8 +50,7 @@ void app_main(void) {
 \`\`\`
 
 ### Pitfalls
-- BOOT 按键是 GPIO0，active LOW（按下为低电平），必须配置上拉
+- BOOT 按键 GPIO0 active LOW，必须配置上拉
 - ISR 函数必须加 IRAM_ATTR，否则 flash cache miss 导致崩溃
-- gpio_install_isr_service() 只调用一次；多 GPIO 中断共用同一 service
-- GPIO35/36/37 禁用（PSRAM 专用）`,
+- gpio_install_isr_service() 全局只调用一次`,
 }
