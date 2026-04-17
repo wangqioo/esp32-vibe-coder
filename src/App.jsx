@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react'
 import Editor from '@monaco-editor/react'
 import ChatPanel from './components/ChatPanel'
+import LogPanel from './components/LogPanel'
 import SettingsModal from './components/SettingsModal'
 import CompilePanel from './components/CompilePanel'
 import { BOARDS, DEFAULT_BOARD_ID } from './context/boards'
@@ -42,6 +43,8 @@ export default function App() {
   const [settings, setSettings] = useState(loadSettings)
   const [showSettings, setShowSettings] = useState(false)
   const [showCompile, setShowCompile] = useState(false)
+  const [rightTab, setRightTab] = useState('chat') // 'chat' | 'log'
+  const [pendingLogAnalysis, setPendingLogAnalysis] = useState(null)
   const [boardId] = useState(DEFAULT_BOARD_ID)
   const board = BOARDS[boardId]
 
@@ -152,13 +155,42 @@ export default function App() {
           </div>
         </div>
 
-        {/* Right: Chat panel */}
-        <div className="chat-pane">
-          <ChatPanel
-            settings={settings}
-            board={board}
-            onInsertCode={handleInsertCode}
-          />
+        {/* Right: tabbed Chat + Log */}
+        <div className="right-pane">
+          <div className="right-tabs">
+            <button
+              className={`right-tab ${rightTab === 'chat' ? 'active' : ''}`}
+              onClick={() => setRightTab('chat')}
+            >
+              🤖 AI 助手
+            </button>
+            <button
+              className={`right-tab ${rightTab === 'log' ? 'active' : ''}`}
+              onClick={() => setRightTab('log')}
+            >
+              📟 设备日志
+            </button>
+          </div>
+          <div className="right-tab-content">
+            {rightTab === 'chat' ? (
+              <ChatPanel
+                settings={settings}
+                board={board}
+                onInsertCode={handleInsertCode}
+                initialPrompt={pendingLogAnalysis}
+                onConsumePrompt={() => setPendingLogAnalysis(null)}
+              />
+            ) : (
+              <LogPanel
+                onAnalyze={(logs) => {
+                  setPendingLogAnalysis(
+                    `请帮我分析以下 ESP32 设备日志，找出问题原因并给出修复建议：\n\n\`\`\`\n${logs}\n\`\`\``
+                  )
+                  setRightTab('chat')
+                }}
+              />
+            )}
+          </div>
         </div>
       </div>
 

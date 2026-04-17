@@ -225,10 +225,44 @@
   background: var(--bg-primary);
 }
 
-/* ===== Chat pane ===== */
-.chat-pane {
+/* ===== Right pane (tabs: chat + log) ===== */
+.right-pane {
   flex: 1;
   min-width: 280px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.right-tabs {
+  display: flex;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.right-tab {
+  flex: 1;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  padding: 8px 0;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.15s;
+}
+
+.right-tab:hover { color: var(--text-secondary); }
+
+.right-tab.active {
+  color: var(--text-primary);
+  border-bottom-color: var(--accent);
+}
+
+.right-tab-content {
+  flex: 1;
   overflow: hidden;
   display: flex;
   flex-direction: column;

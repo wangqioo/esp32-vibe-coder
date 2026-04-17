@@ -15,7 +15,7 @@ const QUICK_PROMPTS = [
   '生成适合这块板子的sdkconfig.defaults',
 ]
 
-export default function ChatPanel({ settings, board, onInsertCode }) {
+export default function ChatPanel({ settings, board, onInsertCode, initialPrompt, onConsumePrompt }) {
   const [messages, setMessages] = useState([])
   const [input, setInput] = useState('')
   const [streaming, setStreaming] = useState(false)
@@ -26,6 +26,14 @@ export default function ChatPanel({ settings, board, onInsertCode }) {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
+
+  // Auto-send when log analysis is triggered from LogPanel
+  useEffect(() => {
+    if (initialPrompt) {
+      sendMessage(initialPrompt)
+      onConsumePrompt?.()
+    }
+  }, [initialPrompt]) // eslint-disable-line
 
   const hasConfig = settings.apiKey && settings.baseUrl && settings.model
 
