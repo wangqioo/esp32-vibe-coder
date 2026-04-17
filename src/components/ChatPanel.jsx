@@ -113,54 +113,91 @@ export default function ChatPanel({ settings, board, onInsertCode, initialPrompt
     let streamBuf = ''  // buffer to detect code block boundaries while streaming
     abortRef.current = () => { aborted = true }
 
-    // Languages that should never be auto-written (shell commands, docs, etc.)
     const SKIP_LANGS = new Set(['bash', 'sh', 'shell', 'zsh', 'powershell', 'text', 'markdown', 'md'])
-
-    // Known config files that live at project root, not under main/
-    const ROOT_CONFIG_FILES = new Set([
-      'CMakeLists.txt', 'sdkconfig.defaults', 'partitions.csv',
-    ])
-    const MAIN_CONFIG_FILES = new Set([
-      'idf_component.yml',
-    ])
+    const SRC_LANGS  = new Set(['c', 'cpp', 'h', 'cc', 'cxx', ''])
+    const ROOT_CFGS  = new Set(['CMakeLists.txt', 'sdkconfig.defaults', 'partitions.csv'])
+    const MAIN_CFGS  = new Set(['idf_component.yml'])
 
     function normalizeFilePath(raw) {
-      const normalized = raw.replace(/\\/g, '/')
-      const filename = normalized.split('/').pop()
-      // Root-level config files
-      if (ROOT_CONFIG_FILES.has(filename)) return filename
-      // main/ config files
-      if (MAIN_CONFIG_FILES.has(filename)) return 'main/' + filename
-      // Source files or files already under main/
-      const parts = normalized.split('/')
-      const mainIdx = parts.lastIndexOf('main')
-      if (mainIdx !== -1) return parts.slice(mainIdx).join('/')
-      // Fallback: put under main/
-      return 'main/' + filename
+      const p = raw.replace(/\\/g, '/').split('/').pop()
+      if (ROOT_CFGS.has(p)) return p
+      if (MAIN_CFGS.has(p)) return 'main/' + p
+      const parts = raw.replace(/\\/g, '/').split('/')
+      const idx = parts.lastIndexOf('main')
+      return idx !== -1 ? parts.slice(idx).join('/') : 'main/' + p
     }
 
+    // Extract { path: code } from a full text that may contain:
+    //   Pattern A: FILE: path\n```lang\ncode\n```   (FILE label ABOVE the block)
+    //   Pattern B: ```c\n// FILE: path\ncode\n```   (FILE marker INSIDE the block)
+    //   Pattern C: plain ```c\ncode\n```             (no label — C/C++ only)
+    function extractFiles(text) {
+      const result = {}
+
+      // Pattern A: optional whitespace, FILE: path, then a code block
+      const patA = /FILE:\s*(\S+)[^\n]*\n[^\`]*```\w*\n([\s\S]*?)\n```/g
+      let m
+      while ((m = patA.exec(text)) !== null) {
+        result[normalizeFilePath(m[1])] = m[2].trim()
+      }
+      if (Object.keys(result).length > 0) return result
+
+      // Pattern B: FILE: marker inside a single code block
+      const patB = /```\w*\n([\s\S]*?)\n```/g
+      while ((m = patB.exec(text)) !== null) {
+        const code = m[1]
+        const inner = /(?:\/\/|#)\s*FILE:\s*(\S+)\n/g
+        const parts = []
+        let im
+        while ((im = inner.exec(code)) !== null) parts.push(im)
+        if (parts.length > 0) {
+          parts.forEach((pm, i) => {
+            const start = pm.index + pm[0].length
+            const end = i + 1 < parts.length ? parts[i + 1].index : code.length
+            result[normalizeFilePath(pm[1])] = code.slice(start, end).trim()
+          })
+        }
+      }
+      if (Object.keys(result).length > 0) return result
+
+      return null  // no FILE markers found
+    }
+
+    // For streaming: flush completed code blocks one at a time
     function tryFlushCodeBlock(buf) {
       const re = /```(\w*)\n([\s\S]*?)\n```/g
       let m, last = null
       while ((m = re.exec(buf)) !== null) last = m
       if (!last) return buf
+
       const lang = last[1].toLowerCase()
       const code = last[2].trim()
 
       if (!SKIP_LANGS.has(lang) && code.length > 0) {
-        // FILE: markers take priority — write regardless of language
-        const filePattern = /(?:\/\/|#|;)?\s*FILE:\s*(\S+)\n([\s\S]*?)(?=(?:\/\/|#|;)?\s*FILE:|$)/g
-        const matches = [...code.matchAll(filePattern)]
-        if (matches.length >= 1) {
-          const fileMap = {}
-          matches.forEach(fm => {
-            const p = normalizeFilePath(fm[1])
-            fileMap[p] = fm[2].trimEnd()
-          })
-          onInsertCode?.(fileMap)
-        } else if (['c', 'cpp', 'h', 'cc', 'cxx', ''].includes(lang)) {
-          // No FILE markers — only write if it's a C/C++ source block
-          onInsertCode?.(code)
+        // Check if there's a FILE: label in the text right before this block
+        const before = buf.slice(0, last.index)
+        const labelMatch = before.match(/FILE:\s*(\S+)\s*$/)
+        if (labelMatch) {
+          // Pattern A: FILE label above block
+          onInsertCode?.({ [normalizeFilePath(labelMatch[1])]: code })
+        } else {
+          // Check for FILE markers inside the block (Pattern B)
+          const inner = /(?:\/\/|#)\s*FILE:\s*(\S+)\n/g
+          const parts = []
+          let im
+          while ((im = inner.exec(code)) !== null) parts.push(im)
+          if (parts.length > 0) {
+            const fileMap = {}
+            parts.forEach((pm, i) => {
+              const start = pm.index + pm[0].length
+              const end = i + 1 < parts.length ? parts[i + 1].index : code.length
+              fileMap[normalizeFilePath(pm[1])] = code.slice(start, end).trim()
+            })
+            onInsertCode?.(fileMap)
+          } else if (SRC_LANGS.has(lang)) {
+            // Pattern C: plain C/C++ block, no label
+            onInsertCode?.(code)
+          }
         }
       }
       return buf.slice(last.index + last[0].length)
