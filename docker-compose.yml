@@ -1,0 +1,18 @@
+version: "3.9"
+
+services:
+  esp32-vibe-coder:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: esp32-vibe-coder:latest
+    container_name: esp32-vibe-coder
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    labels:
+      - "com.centurylinklabs.watchtower.enable=false"
+
+# Usage:
+#   docker compose up -d --build
+#   Then open http://<server-ip>:8080
