@@ -2,7 +2,6 @@ import { useState, useEffect, useRef } from 'react'
 import { compileFirmware, downloadBin, loadCompilerUrl, saveCompilerUrl } from '../utils/compiler'
 import { getDeviceInfo, pushOta, loadOtaIp, saveOtaIp } from '../utils/ota'
 import { connectBle } from '../utils/bleOta'
-import { buildProjectFiles } from '../context/index'
 import './CompilePanel.css'
 
 const BUILD = {
@@ -25,7 +24,7 @@ const BLE = {
   error:      { label: '✗ BLE 失败',  cls: 'error' },
 }
 
-export default function CompilePanel({ code, selectedSkills, onClose }) {
+export default function CompilePanel({ projectFiles: projectFilesProp, onClose }) {
   const [compilerUrl, setCompilerUrl] = useState(loadCompilerUrl)
   const [buildState,  setBuildState]  = useState('idle')
   const [otaState,    setOtaState]    = useState('idle')
@@ -41,7 +40,7 @@ export default function CompilePanel({ code, selectedSkills, onClose }) {
   const [showFiles,   setShowFiles]   = useState(false)
   const bleSessionRef = useRef(null)
 
-  const projectFiles = buildProjectFiles('vibe_app', selectedSkills || [])
+  const projectFiles = projectFilesProp || {}
 
   useEffect(() => {
     if (!otaIp) return
@@ -60,8 +59,13 @@ export default function CompilePanel({ code, selectedSkills, onClose }) {
     setErrorLog('')
     setFirmware(null)
     setStatus('正在连接编译服务器...')
+    // Extract main source from projectFiles
+    const mainPath = Object.keys(projectFiles).find(k => k.endsWith('main.c') || k.endsWith('main.cpp')) || 'main/main.c'
+    const code = projectFiles[mainPath] || ''
+    // Send all non-__ files except the main file (server writes it separately)
+    const configFiles = Object.fromEntries(Object.entries(projectFiles).filter(([k]) => !k.startsWith('__') && k !== mainPath))
     try {
-      const blob = await compileFirmware(compilerUrl, code, projectFiles, setStatus)
+      const blob = await compileFirmware(compilerUrl, code, configFiles, setStatus)
       setFirmware(blob)
       setStatus(`编译成功  ·  ${(blob.size / 1024).toFixed(1)} KB`)
       setBuildState('ok')
