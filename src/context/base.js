@@ -97,3 +97,21 @@ CONFIG_ESP32S3_INSTRUCTION_CACHE_32KB=y
 CONFIG_ESP32S3_DATA_CACHE_64KB=y
 CONFIG_ESP32S3_DATA_CACHE_LINE_64B=y
 \`\`\``
+
+## Multi-File Code Output
+When generating code that spans multiple files, use FILE markers so the IDE splits them into separate tabs:
+
+\`\`\`c
+// FILE: main/main.c
+#include <stdio.h>
+// ... main logic ...
+
+// FILE: main/led.c
+// ... led driver ...
+
+// FILE: main/led.h
+// ... led header ...
+\`\`\`
+
+Single-file responses: write code normally without FILE markers.
+`
