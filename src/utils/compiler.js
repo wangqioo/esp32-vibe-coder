@@ -1,6 +1,6 @@
 /**
  * Cloud compiler client
- * Sends C code to the compiler service, downloads the .bin
+ * Sends code + projectFiles to the compiler service, returns firmware blob
  */
 
 const COMPILER_KEY = 'esp32-vibe-coder-compiler-url'
@@ -14,19 +14,20 @@ export function saveCompilerUrl(url) {
 }
 
 /**
- * @param {string} compilerUrl  e.g. http://192.168.1.100:8766
- * @param {string} code         C source code
- * @param {function} onStatus   status string callback
- * @returns {Promise<Blob>}     firmware binary blob
+ * @param {string}   compilerUrl   e.g. http://192.168.1.100:8766
+ * @param {string}   code          C source code (main.c content)
+ * @param {object}   projectFiles  from buildProjectFiles() — config files map
+ * @param {function} onStatus      status string callback
+ * @returns {Promise<Blob>}        firmware binary blob
  */
-export async function compileFirmware(compilerUrl, code, onStatus) {
+export async function compileFirmware(compilerUrl, code, projectFiles, onStatus) {
   const base = compilerUrl.replace(/\/$/, '')
   onStatus('正在连接编译服务器...')
 
   const res = await fetch(`${base}/compile`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ code }),
+    body: JSON.stringify({ code, projectFiles }),
   })
 
   if (!res.ok) {
@@ -35,8 +36,7 @@ export async function compileFirmware(compilerUrl, code, onStatus) {
   }
 
   onStatus('编译成功，正在下载固件...')
-  const blob = await res.blob()
-  return blob
+  return res.blob()
 }
 
 export function downloadBin(blob, filename = 'firmware.bin') {
