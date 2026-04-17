@@ -116,15 +116,27 @@ export default function ChatPanel({ settings, board, onInsertCode, initialPrompt
     // Languages that should never be auto-written (shell commands, docs, etc.)
     const SKIP_LANGS = new Set(['bash', 'sh', 'shell', 'zsh', 'powershell', 'text', 'markdown', 'md'])
 
+    // Known config files that live at project root, not under main/
+    const ROOT_CONFIG_FILES = new Set([
+      'CMakeLists.txt', 'sdkconfig.defaults', 'partitions.csv',
+    ])
+    const MAIN_CONFIG_FILES = new Set([
+      'idf_component.yml',
+    ])
+
     function normalizeFilePath(raw) {
-      // Strip leading project folder prefix like "hello_world_lcd/main/main.c" -> "main/main.c"
-      // Keep only the last two segments if they form a valid src path
-      const parts = raw.replace(/\\/g, '/').split('/')
-      // Find "main" folder index
+      const normalized = raw.replace(/\\/g, '/')
+      const filename = normalized.split('/').pop()
+      // Root-level config files
+      if (ROOT_CONFIG_FILES.has(filename)) return filename
+      // main/ config files
+      if (MAIN_CONFIG_FILES.has(filename)) return 'main/' + filename
+      // Source files or files already under main/
+      const parts = normalized.split('/')
       const mainIdx = parts.lastIndexOf('main')
       if (mainIdx !== -1) return parts.slice(mainIdx).join('/')
-      // No "main" folder: treat as main/filename
-      return 'main/' + parts[parts.length - 1]
+      // Fallback: put under main/
+      return 'main/' + filename
     }
 
     function tryFlushCodeBlock(buf) {
