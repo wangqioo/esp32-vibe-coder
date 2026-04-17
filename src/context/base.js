@@ -99,7 +99,7 @@ CONFIG_ESP32S3_DATA_CACHE_LINE_64B=y
 \`\`\`
 
 ## Multi-File Code Output
-When generating code that spans multiple files, output ONE code block with FILE markers. Use ONLY relative paths starting with `main/` — no project folder prefix.
+When generating code that spans multiple files, output ONE code block with FILE markers. Use ONLY relative paths starting with \`main/\` — no project folder prefix.
 
 \`\`\`c
 // FILE: main/main.c
@@ -114,7 +114,7 @@ When generating code that spans multiple files, output ONE code block with FILE 
 \`\`\`
 
 Rules:
-- FILE path must start with `main/` (e.g. `main/main.c`, NOT `myproject/main/main.c`)
+- FILE path must start with \`main/\` (e.g. \`main/main.c\`, NOT \`myproject/main/main.c\`)
 - Single-file response: write ONE plain code block, no FILE marker needed
 - Shell commands, build steps, yaml, cmake: write as separate non-c code blocks, they will NOT be auto-inserted
 `
