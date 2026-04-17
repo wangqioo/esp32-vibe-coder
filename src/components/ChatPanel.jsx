@@ -118,8 +118,8 @@ export default function ChatPanel({ settings, board, onInsertCode, initialPrompt
 
     function tryFlushCodeBlock(buf) {
       // Find completed code blocks: ```lang
-...code...
-```
+    // ...code...
+    // ```
       const re = /```(\w*)\n([\s\S]*?)\n```/g
       let m, last = null
       while ((m = re.exec(buf)) !== null) last = m
