@@ -315,3 +315,81 @@
   color: var(--text-muted);
   margin-top: 6px;
 }
+
+/* Skill selector */
+.skill-selector {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-secondary);
+}
+.skill-selector-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+.skill-tag {
+  padding: 3px 10px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.skill-tag:hover { border-color: var(--accent); color: var(--accent); }
+.skill-tag.active { background: var(--accent); border-color: var(--accent); color: white; }
+
+/* Self-evolution knowledge card */
+.knowledge-card {
+  margin: 8px 12px;
+  border: 1px solid #f0a500;
+  border-radius: 8px;
+  background: rgba(240, 165, 0, 0.08);
+  font-size: 12px;
+}
+.knowledge-card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px 4px;
+  font-weight: 600;
+  color: #f0a500;
+}
+.knowledge-skill-tag {
+  font-size: 10px;
+  padding: 1px 7px;
+  border-radius: 10px;
+  background: rgba(240, 165, 0, 0.2);
+  color: #f0a500;
+}
+.knowledge-card-body {
+  padding: 4px 12px 8px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+.knowledge-type {
+  margin-right: 6px;
+  font-weight: 600;
+}
+.knowledge-card-actions {
+  display: flex;
+  gap: 8px;
+  padding: 0 12px 10px;
+}
+.knowledge-btn {
+  padding: 4px 14px;
+  border-radius: 6px;
+  border: none;
+  font-size: 12px;
+  cursor: pointer;
+  font-weight: 500;
+}
+.knowledge-btn.accept { background: #f0a500; color: #000; }
+.knowledge-btn.accept:hover { background: #ffb700; }
+.knowledge-btn.dismiss { background: var(--bg-tertiary); color: var(--text-muted); }
+.knowledge-btn.dismiss:hover { color: var(--text-primary); }
