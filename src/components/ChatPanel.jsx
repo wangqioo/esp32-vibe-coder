@@ -113,35 +113,44 @@ export default function ChatPanel({ settings, board, onInsertCode, initialPrompt
     let streamBuf = ''  // buffer to detect code block boundaries while streaming
     abortRef.current = () => { aborted = true }
 
-    // Source file languages — only these get auto-written to the editor
-    const SOURCE_LANGS = new Set(['c', 'cpp', 'h', 'cc', 'cxx', ''])
+    // Languages that should never be auto-written (shell commands, docs, etc.)
+    const SKIP_LANGS = new Set(['bash', 'sh', 'shell', 'zsh', 'powershell', 'text', 'markdown', 'md'])
+
+    function normalizeFilePath(raw) {
+      // Strip leading project folder prefix like "hello_world_lcd/main/main.c" -> "main/main.c"
+      // Keep only the last two segments if they form a valid src path
+      const parts = raw.replace(/\\/g, '/').split('/')
+      // Find "main" folder index
+      const mainIdx = parts.lastIndexOf('main')
+      if (mainIdx !== -1) return parts.slice(mainIdx).join('/')
+      // No "main" folder: treat as main/filename
+      return 'main/' + parts[parts.length - 1]
+    }
 
     function tryFlushCodeBlock(buf) {
-      // Find completed code blocks: ```lang
-    // ...code...
-    // ```
       const re = /```(\w*)\n([\s\S]*?)\n```/g
       let m, last = null
       while ((m = re.exec(buf)) !== null) last = m
       if (!last) return buf
       const lang = last[1].toLowerCase()
       const code = last[2].trim()
-      if (SOURCE_LANGS.has(lang) && code.length > 0) {
-        // Parse FILE markers
-        const filePattern = /\/\/\s*FILE:\s*(\S+)\n([\s\S]*?)(?=\/\/\s*FILE:|$)/g
+
+      if (!SKIP_LANGS.has(lang) && code.length > 0) {
+        // FILE: markers take priority — write regardless of language
+        const filePattern = /(?:\/\/|#|;)?\s*FILE:\s*(\S+)\n([\s\S]*?)(?=(?:\/\/|#|;)?\s*FILE:|$)/g
         const matches = [...code.matchAll(filePattern)]
-        if (matches.length > 1) {
+        if (matches.length >= 1) {
           const fileMap = {}
           matches.forEach(fm => {
-            const p = fm[1].includes('/') ? fm[1] : 'main/' + fm[1]
+            const p = normalizeFilePath(fm[1])
             fileMap[p] = fm[2].trimEnd()
           })
           onInsertCode?.(fileMap)
-        } else {
+        } else if (['c', 'cpp', 'h', 'cc', 'cxx', ''].includes(lang)) {
+          // No FILE markers — only write if it's a C/C++ source block
           onInsertCode?.(code)
         }
       }
-      // Return buf with processed block removed so we don't double-process
       return buf.slice(last.index + last[0].length)
     }
 
