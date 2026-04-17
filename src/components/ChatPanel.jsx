@@ -110,7 +110,40 @@ export default function ChatPanel({ settings, board, onInsertCode, initialPrompt
 
     let aborted = false
     let finalReply = ''
+    let streamBuf = ''  // buffer to detect code block boundaries while streaming
     abortRef.current = () => { aborted = true }
+
+    // Source file languages — only these get auto-written to the editor
+    const SOURCE_LANGS = new Set(['c', 'cpp', 'h', 'cc', 'cxx', ''])
+
+    function tryFlushCodeBlock(buf) {
+      // Find completed code blocks: ```lang
+...code...
+```
+      const re = /```(\w*)\n([\s\S]*?)\n```/g
+      let m, last = null
+      while ((m = re.exec(buf)) !== null) last = m
+      if (!last) return buf
+      const lang = last[1].toLowerCase()
+      const code = last[2].trim()
+      if (SOURCE_LANGS.has(lang) && code.length > 0) {
+        // Parse FILE markers
+        const filePattern = /\/\/\s*FILE:\s*(\S+)\n([\s\S]*?)(?=\/\/\s*FILE:|$)/g
+        const matches = [...code.matchAll(filePattern)]
+        if (matches.length > 1) {
+          const fileMap = {}
+          matches.forEach(fm => {
+            const p = fm[1].includes('/') ? fm[1] : 'main/' + fm[1]
+            fileMap[p] = fm[2].trimEnd()
+          })
+          onInsertCode?.(fileMap)
+        } else {
+          onInsertCode?.(code)
+        }
+      }
+      // Return buf with processed block removed so we don't double-process
+      return buf.slice(last.index + last[0].length)
+    }
 
     await streamChat({
       baseUrl: settings.baseUrl,
@@ -120,6 +153,9 @@ export default function ChatPanel({ settings, board, onInsertCode, initialPrompt
       onChunk: (chunk) => {
         if (aborted) return
         finalReply += chunk
+        streamBuf += chunk
+        // Try to flush completed code blocks as they arrive
+        streamBuf = tryFlushCodeBlock(streamBuf)
         setMessages(prev => {
           const updated = [...prev]
           updated[updated.length - 1] = {
@@ -131,25 +167,6 @@ export default function ChatPanel({ settings, board, onInsertCode, initialPrompt
       },
       onDone: async () => {
         setStreaming(false)
-        // Auto-write code to project editor
-        if (!aborted) {
-          const codeBlocks = [...finalReply.matchAll(/```[\w]*\n([\s\S]*?)```/g)].map(m => m[1].trim())
-          if (codeBlocks.length > 0) {
-            const combined = codeBlocks.join('\n\n')
-            const filePattern = /\/\/\s*FILE:\s*(\S+)\n([\s\S]*?)(?=\/\/\s*FILE:|$)/g
-            const matches = [...combined.matchAll(filePattern)]
-            if (matches.length > 1) {
-              const fileMap = {}
-              matches.forEach(m => {
-                const p = m[1].includes('/') ? m[1] : `main/${m[1]}`
-                fileMap[p] = m[2].trimEnd()
-              })
-              onInsertCode?.(fileMap)
-            } else {
-              onInsertCode?.(codeBlocks[codeBlocks.length - 1])
-            }
-          }
-        }
         // Self-evolution: extract knowledge after reply
         if (!aborted && finalReply.length > 100) {
           const extracted = await extractKnowledge({
