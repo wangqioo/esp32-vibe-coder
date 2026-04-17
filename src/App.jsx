@@ -1,11 +1,10 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback } from 'react'
 import ChatPanel from './components/ChatPanel'
 import LogPanel from './components/LogPanel'
 import SettingsModal from './components/SettingsModal'
 import CompilePanel from './components/CompilePanel'
 import ProjectEditor from './components/ProjectEditor'
 import { BOARDS, DEFAULT_BOARD_ID } from './context/boards'
-import { buildProjectFiles } from './context/index'
 import './App.css'
 
 const STORAGE_KEY = 'esp32-vibe-coder-settings'
@@ -36,14 +35,6 @@ function loadSettings() {
 }
 function saveSettings(s) { localStorage.setItem(STORAGE_KEY, JSON.stringify(s)) }
 
-function initProjectFiles(selectedSkills) {
-  const cfg = buildProjectFiles('vibe_app', selectedSkills)
-  const mainFile = cfg['__mainFile'] || 'main.c'
-  delete cfg['__mainFile']
-  const path = `main/${mainFile}`
-  return { files: { [path]: DEFAULT_MAIN, ...cfg }, activeFile: path }
-}
-
 export default function App() {
   const [settings, setSettings]       = useState(loadSettings)
   const [showSettings, setShowSettings] = useState(false)
@@ -54,35 +45,9 @@ export default function App() {
   const [selectedSkills, setSelectedSkills] = useState([])
   const board = BOARDS[boardId]
 
-  const [projectFiles, setProjectFiles] = useState(() => {
-    const { files } = initProjectFiles([])
-    return files
-  })
+  // projectFiles contains only source files (.c/.h etc) — config files generated at compile time
+  const [projectFiles, setProjectFiles] = useState({ 'main/main.c': DEFAULT_MAIN })
   const [activeFile, setActiveFile] = useState('main/main.c')
-
-  // When skills change, regenerate config files but preserve user-edited source files
-  useEffect(() => {
-    const cfg = buildProjectFiles('vibe_app', selectedSkills)
-    const mainFile = cfg['__mainFile'] || 'main.c'
-    delete cfg['__mainFile']
-    const mainPath = `main/${mainFile}`
-
-    setProjectFiles(prev => {
-      // Keep all user source files (.c/.cpp/.h), regenerate config files
-      const userSrcs = Object.fromEntries(
-        Object.entries(prev).filter(([k]) =>
-          k.endsWith('.c') || k.endsWith('.cpp') || k.endsWith('.h') || k.endsWith('.hpp')
-        )
-      )
-      // Ensure main file exists
-      if (!userSrcs[mainPath]) userSrcs[mainPath] = DEFAULT_MAIN
-      return { ...userSrcs, ...cfg }
-    })
-    setActiveFile(prev => {
-      if (prev.endsWith('.c') || prev.endsWith('.cpp') || prev.endsWith('.h')) return prev
-      return mainPath
-    })
-  }, [selectedSkills])
 
   function handleSaveSettings(s) { setSettings(s); saveSettings(s) }
 
@@ -190,6 +155,7 @@ export default function App() {
       {showCompile && (
         <CompilePanel
           projectFiles={projectFiles}
+          selectedSkills={selectedSkills}
           onClose={() => setShowCompile(false)}
         />
       )}
