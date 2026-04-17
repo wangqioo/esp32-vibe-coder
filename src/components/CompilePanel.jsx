@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { compileFirmware, downloadBin, loadCompilerUrl, saveCompilerUrl } from '../utils/compiler'
+import { compileFirmware, downloadBin } from '../utils/compiler'
 import { getDeviceInfo, pushOta, loadOtaIp, saveOtaIp } from '../utils/ota'
 import { connectBle } from '../utils/bleOta'
 import { buildProjectFiles } from '../context/index'
@@ -26,7 +26,6 @@ const BLE = {
 }
 
 export default function CompilePanel({ projectFiles: sourceProp, selectedSkills, onClose }) {
-  const [compilerUrl, setCompilerUrl] = useState(loadCompilerUrl)
   const [buildState,  setBuildState]  = useState('idle')
   const [otaState,    setOtaState]    = useState('idle')
   const [status,      setStatus]      = useState('')
@@ -59,8 +58,6 @@ export default function CompilePanel({ projectFiles: sourceProp, selectedSkills,
   }, [otaIp])
 
   async function handleCompile() {
-    if (!compilerUrl) return
-    saveCompilerUrl(compilerUrl)
     setBuildState('building')
     setOtaState('idle')
     setErrorLog('')
@@ -72,7 +69,7 @@ export default function CompilePanel({ projectFiles: sourceProp, selectedSkills,
     // Send all non-__ files except the main file (server writes it separately)
     const configFiles = Object.fromEntries(Object.entries(projectFiles).filter(([k]) => !k.startsWith('__') && k !== mainPath))
     try {
-      const blob = await compileFirmware(compilerUrl, code, configFiles, setStatus)
+      const blob = await compileFirmware(code, configFiles, setStatus)
       setFirmware(blob)
       setStatus(`编译成功  ·  ${(blob.size / 1024).toFixed(1)} KB`)
       setBuildState('ok')
@@ -170,20 +167,10 @@ export default function CompilePanel({ projectFiles: sourceProp, selectedSkills,
             </div>
           )}
 
-          {/* 编译服务器 */}
-          <label className="field-label">编译服务器地址</label>
-          <input
-            className="field-input"
-            value={compilerUrl}
-            onChange={e => setCompilerUrl(e.target.value)}
-            placeholder="http://192.168.1.100:8766"
-          />
-          <p className="compile-hint">运行 <code>compiler-service/</code> Docker 容器后填入地址</p>
-
           <button
             className={`compile-btn ${b.cls}`}
             onClick={handleCompile}
-            disabled={!compilerUrl || buildState === 'building'}
+            disabled={buildState === 'building'}
           >
             {b.label}
           </button>

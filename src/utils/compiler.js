@@ -1,30 +1,19 @@
 /**
  * Cloud compiler client
  * Sends code + projectFiles to the compiler service, returns firmware blob
+ * Always uses relative /compile path (proxied by nginx to compiler service)
  */
 
-const COMPILER_KEY = 'esp32-vibe-coder-compiler-url'
-
-export function loadCompilerUrl() {
-  return localStorage.getItem(COMPILER_KEY) || (typeof window !== 'undefined' ? window.location.origin : '')
-}
-
-export function saveCompilerUrl(url) {
-  localStorage.setItem(COMPILER_KEY, url)
-}
-
 /**
- * @param {string}   compilerUrl   e.g. http://192.168.1.100:8766
  * @param {string}   code          C source code (main.c content)
  * @param {object}   projectFiles  from buildProjectFiles() — config files map
  * @param {function} onStatus      status string callback
  * @returns {Promise<Blob>}        firmware binary blob
  */
-export async function compileFirmware(compilerUrl, code, projectFiles, onStatus) {
-  const base = (compilerUrl || window.location.origin).replace(/\/$/, '')
+export async function compileFirmware(code, projectFiles, onStatus) {
   onStatus('正在连接编译服务器...')
 
-  const res = await fetch(`${base}/compile`, {
+  const res = await fetch('/compile', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ code, projectFiles }),
