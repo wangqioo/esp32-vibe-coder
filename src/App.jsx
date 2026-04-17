@@ -54,17 +54,19 @@ export default function App() {
   // Called by AI with a map of { filename: code } or a single code string
   const handleInsertCode = useCallback((codeOrFiles) => {
     if (typeof codeOrFiles === 'string') {
-      // Single code block — write to active source file
       const target = activeFile.endsWith('.c') || activeFile.endsWith('.cpp') || activeFile.endsWith('.h')
         ? activeFile
         : 'main/main.c'
       setProjectFiles(prev => ({ ...prev, [target]: codeOrFiles }))
       setActiveFile(target)
     } else {
-      // Multi-file object from AI
+      // Multi-file: write everything AI gave us (sources + config files)
       setProjectFiles(prev => ({ ...prev, ...codeOrFiles }))
-      const first = Object.keys(codeOrFiles)[0]
-      if (first) setActiveFile(first)
+      // Focus the first source file, not a config file
+      const firstSrc = Object.keys(codeOrFiles).find(k =>
+        k.endsWith('.c') || k.endsWith('.cpp') || k.endsWith('.h')
+      )
+      if (firstSrc) setActiveFile(firstSrc)
     }
   }, [activeFile])
 
