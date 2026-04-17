@@ -12,7 +12,7 @@ app = Flask(__name__)
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
 
-TEMPLATE_DIR = Path(os.environ.get("TEMPLATE_DIR", "/compiler/template"))
+TEMPLATE_DIR = Path(os.environ.get("TEMPLATE_DIR", "/app/template"))
 BUILD_BASE   = Path("/tmp/builds")
 IDF_PATH     = Path(os.environ.get("IDF_PATH", "/opt/esp/idf"))
 
