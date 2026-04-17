@@ -98,23 +98,38 @@ CONFIG_ESP32S3_DATA_CACHE_64KB=y
 CONFIG_ESP32S3_DATA_CACHE_LINE_64B=y
 \`\`\`
 
-## Multi-File Code Output
-When generating code that spans multiple files, output ONE code block with FILE markers. Use ONLY relative paths starting with \`main/\` — no project folder prefix.
+## Code Output Format — STRICT RULES
+The IDE auto-inserts your code blocks into the project editor. Follow exactly:
 
+**Single file**: just write the code block normally.
+
+**Multiple files**: write each file as a SEPARATE code block with \`FILE: path\` on the line immediately above (no blank line between label and block):
+
+FILE: main/main.c
 \`\`\`c
-// FILE: main/main.c
-#include <stdio.h>
-// ... main code ...
-
-// FILE: main/led.c
-// ... led driver ...
-
-// FILE: main/led.h
-// ... led header ...
+#include ...
 \`\`\`
 
-Rules:
-- FILE path must start with \`main/\` (e.g. \`main/main.c\`, NOT \`myproject/main/main.c\`)
-- Single-file response: write ONE plain code block, no FILE marker needed
-- Shell commands, build steps, yaml, cmake: write as separate non-c code blocks, they will NOT be auto-inserted
+FILE: main/helper.c
+\`\`\`c
+...
+\`\`\`
+
+FILE: sdkconfig.defaults
+\`\`\`
+CONFIG_IDF_TARGET="esp32s3"
+\`\`\`
+
+FILE: CMakeLists.txt
+\`\`\`cmake
+cmake_minimum_required(VERSION 3.16)
+\`\`\`
+
+Path rules:
+- Source: \`main/main.c\`, \`main/helper.h\`
+- Root config: \`CMakeLists.txt\`, \`sdkconfig.defaults\`, \`partitions.csv\`
+- Component manifest: \`main/idf_component.yml\`
+- NEVER prefix with project folder (NOT \`myproject/main/main.c\`)
+
+Shell/bash blocks: shown as docs only, never auto-inserted.
 `
