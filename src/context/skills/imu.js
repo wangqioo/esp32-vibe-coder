@@ -1,4 +1,5 @@
-
+// IMU skill — QMI8658 for 立创实战派ESP32-S3
+// Enriched from 02-attitude official example
 export const imuSkill = {
   id: 'imu',
   label: 'IMU (QMI8658)',

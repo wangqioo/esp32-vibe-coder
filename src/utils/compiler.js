@@ -6,7 +6,7 @@
 const COMPILER_KEY = 'esp32-vibe-coder-compiler-url'
 
 export function loadCompilerUrl() {
-  return localStorage.getItem(COMPILER_KEY) || ''
+  return localStorage.getItem(COMPILER_KEY) || (typeof window !== 'undefined' ? window.location.origin : '')
 }
 
 export function saveCompilerUrl(url) {
@@ -21,7 +21,7 @@ export function saveCompilerUrl(url) {
  * @returns {Promise<Blob>}        firmware binary blob
  */
 export async function compileFirmware(compilerUrl, code, projectFiles, onStatus) {
-  const base = compilerUrl.replace(/\/$/, '')
+  const base = (compilerUrl || window.location.origin).replace(/\/$/, '')
   onStatus('正在连接编译服务器...')
 
   const res = await fetch(`${base}/compile`, {
