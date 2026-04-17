@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
 import { compileFirmware, downloadBin, loadCompilerUrl, saveCompilerUrl } from '../utils/compiler'
-import { pingDevice, getDeviceInfo, pushOta, loadOtaIp, saveOtaIp } from '../utils/ota'
+import { getDeviceInfo, pushOta, loadOtaIp, saveOtaIp } from '../utils/ota'
 import { connectBle } from '../utils/bleOta'
+import { buildProjectFiles } from '../context/index'
 import './CompilePanel.css'
 
 const BUILD = {
@@ -10,38 +11,38 @@ const BUILD = {
   ok:       { label: '✓ 编译成功',  cls: 'ok' },
   error:    { label: '✗ 编译失败',  cls: 'error' },
 }
-
 const OTA = {
-  idle:     { label: '↑ 推送 OTA',  cls: '' },
-  pushing:  { label: '↑ 推送中...',  cls: 'building' },
-  ok:       { label: '✓ 烧录成功',  cls: 'ok' },
-  error:    { label: '✗ 推送失败',  cls: 'error' },
+  idle:    { label: '↑ 推送 OTA', cls: '' },
+  pushing: { label: '↑ 推送中...', cls: 'building' },
+  ok:      { label: '✓ 烧录成功',  cls: 'ok' },
+  error:   { label: '✗ 推送失败',  cls: 'error' },
 }
-
 const BLE = {
-  idle:       { label: '⬡ BLE 烧录',   cls: '' },
-  connecting: { label: '⬡ 配对中...',  cls: 'building' },
-  flashing:   { label: '⬡ 烧录中...',  cls: 'building' },
-  ok:         { label: '✓ BLE 成功',   cls: 'ok' },
-  error:      { label: '✗ BLE 失败',   cls: 'error' },
+  idle:       { label: '⬡ BLE 烧录',  cls: '' },
+  connecting: { label: '⬡ 配对中...', cls: 'building' },
+  flashing:   { label: '⬡ 烧录中...', cls: 'building' },
+  ok:         { label: '✓ BLE 成功',  cls: 'ok' },
+  error:      { label: '✗ BLE 失败',  cls: 'error' },
 }
 
-export default function CompilePanel({ code, onClose }) {
+export default function CompilePanel({ code, selectedSkills, onClose }) {
   const [compilerUrl, setCompilerUrl] = useState(loadCompilerUrl)
-  const [buildState, setBuildState]   = useState('idle')
-  const [otaState,   setOtaState]     = useState('idle')
-  const [status,     setStatus]       = useState('')
-  const [errorLog,   setErrorLog]     = useState('')
-  const [firmware,   setFirmware]     = useState(null)
-  const [otaIp,       setOtaIp]        = useState(loadOtaIp)
-  const [deviceInfo,  setDeviceInfo]   = useState(null)
-  const [otaProgress, setOtaProgress]  = useState(0)
-  const [bleState,    setBleState]     = useState('idle')
-  const [bleProgress, setBleProgress]  = useState(0)
-  const [bleName,     setBleName]      = useState('')
+  const [buildState,  setBuildState]  = useState('idle')
+  const [otaState,    setOtaState]    = useState('idle')
+  const [status,      setStatus]      = useState('')
+  const [errorLog,    setErrorLog]    = useState('')
+  const [firmware,    setFirmware]    = useState(null)
+  const [otaIp,       setOtaIp]       = useState(loadOtaIp)
+  const [deviceInfo,  setDeviceInfo]  = useState(null)
+  const [otaProgress, setOtaProgress] = useState(0)
+  const [bleState,    setBleState]    = useState('idle')
+  const [bleProgress, setBleProgress] = useState(0)
+  const [bleName,     setBleName]     = useState('')
+  const [showFiles,   setShowFiles]   = useState(false)
   const bleSessionRef = useRef(null)
 
-  /* 设备探测 */
+  const projectFiles = buildProjectFiles('vibe_app', selectedSkills || [])
+
   useEffect(() => {
     if (!otaIp) return
     let cancelled = false
@@ -59,9 +60,8 @@ export default function CompilePanel({ code, onClose }) {
     setErrorLog('')
     setFirmware(null)
     setStatus('正在连接编译服务器...')
-
     try {
-      const blob = await compileFirmware(compilerUrl, code, setStatus)
+      const blob = await compileFirmware(compilerUrl, code, projectFiles, setStatus)
       setFirmware(blob)
       setStatus(`编译成功  ·  ${(blob.size / 1024).toFixed(1)} KB`)
       setBuildState('ok')
@@ -78,15 +78,14 @@ export default function CompilePanel({ code, onClose }) {
     setOtaState('pushing')
     setOtaProgress(0)
     setStatus('正在推送固件...')
-
     try {
-      await pushOta(otaIp, firmware, (pct) => {
+      await pushOta(otaIp, firmware, pct => {
         setOtaProgress(pct)
         setStatus(`推送中... ${pct}%`)
       })
       setStatus('固件推送成功！设备正在重启...')
       setOtaState('ok')
-      setDeviceInfo(null) // 设备重启后失联
+      setDeviceInfo(null)
     } catch (e) {
       setErrorLog(e.message)
       setStatus('OTA 推送失败')
@@ -99,7 +98,6 @@ export default function CompilePanel({ code, onClose }) {
     setBleState('connecting')
     setBleProgress(0)
     setStatus('请在弹窗中选择 ESP32-Vibe-OTA 设备...')
-
     let session
     try {
       session = await connectBle()
@@ -112,7 +110,6 @@ export default function CompilePanel({ code, onClose }) {
       setStatus('BLE 连接失败: ' + e.message)
       return
     }
-
     try {
       const buf = await firmware.arrayBuffer()
       await session.flash(buf, ({ sent, total, percent }) => {
@@ -144,7 +141,25 @@ export default function CompilePanel({ code, onClose }) {
         </div>
 
         <div className="compile-body">
-          {/* ── 编译服务器 ── */}
+          {/* 工程文件预览 */}
+          <div className="project-files-row">
+            <span className="field-label" style={{margin:0}}>工程配置</span>
+            <button className="files-toggle" onClick={() => setShowFiles(v => !v)}>
+              {showFiles ? '收起' : `查看 ${Object.keys(projectFiles).length} 个文件`}
+            </button>
+          </div>
+          {showFiles && (
+            <div className="project-files-preview">
+              {Object.entries(projectFiles).map(([name, content]) => (
+                <details key={name}>
+                  <summary>{name}</summary>
+                  <pre>{content}</pre>
+                </details>
+              ))}
+            </div>
+          )}
+
+          {/* 编译服务器 */}
           <label className="field-label">编译服务器地址</label>
           <input
             className="field-input"
@@ -152,9 +167,7 @@ export default function CompilePanel({ code, onClose }) {
             onChange={e => setCompilerUrl(e.target.value)}
             placeholder="http://192.168.1.100:8766"
           />
-          <p className="compile-hint">
-            运行 <code>compiler-service/</code> Docker 容器后填入地址
-          </p>
+          <p className="compile-hint">运行 <code>compiler-service/</code> Docker 容器后填入地址</p>
 
           <button
             className={`compile-btn ${b.cls}`}
@@ -164,7 +177,7 @@ export default function CompilePanel({ code, onClose }) {
             {b.label}
           </button>
 
-          {/* ── OTA 推送 ── */}
+          {/* WiFi OTA */}
           <div className="ota-section">
             <label className="field-label">设备 IP（WiFi OTA）</label>
             <div className="ota-ip-row">
@@ -175,35 +188,24 @@ export default function CompilePanel({ code, onClose }) {
                 placeholder="192.168.1.88"
               />
               <div className={`device-dot ${deviceInfo ? 'online' : 'offline'}`}
-                   title={deviceInfo
-                     ? `${deviceInfo.version}  RSSI: ${deviceInfo.rssi} dBm`
-                     : '未检测到设备'} />
+                   title={deviceInfo ? `${deviceInfo.version}  RSSI: ${deviceInfo.rssi} dBm` : '未检测到设备'} />
             </div>
-
             {deviceInfo && (
               <div className="device-info">
-                当前固件: <b>{deviceInfo.version}</b>
-                &nbsp;·&nbsp; RSSI: {deviceInfo.rssi} dBm
+                当前固件: <b>{deviceInfo.version}</b> · RSSI: {deviceInfo.rssi} dBm
               </div>
             )}
-
             {otaState === 'pushing' && (
               <div className="ota-progress-wrap">
                 <div className="ota-progress-bar" style={{ width: `${otaProgress}%` }} />
                 <span>{otaProgress}%</span>
               </div>
             )}
-
             <div className="compile-actions">
-              <button
-                className={`compile-btn ${o.cls}`}
-                onClick={handleOta}
-                disabled={!firmware || !otaIp || otaState === 'pushing'}
-                title={!firmware ? '请先编译' : ''}
-              >
+              <button className={`compile-btn ${o.cls}`} onClick={handleOta}
+                disabled={!firmware || !otaIp || otaState === 'pushing'}>
                 {o.label}
               </button>
-
               {buildState === 'ok' && (
                 <button className="compile-btn download" onClick={() => downloadBin(firmware)}>
                   ↓ 下载 .bin
@@ -212,45 +214,34 @@ export default function CompilePanel({ code, onClose }) {
             </div>
           </div>
 
-          {/* ── BLE OTA ── */}
+          {/* BLE OTA */}
           <div className="ota-section ble-section">
             <label className="field-label">BLE 烧录（无需 WiFi）</label>
             <p className="compile-hint">
-              通过蓝牙直接烧录——适用于 WiFi 未配置或信号弱的场景。<br/>
-              需要 Chrome / Edge 桌面版，设备需运行 OTA 固件。
+              通过蓝牙直接烧录。需要 Chrome / Edge 桌面版，设备需运行 OTA 固件。
             </p>
-
             {bleState === 'flashing' && (
               <div className="ota-progress-wrap">
                 <div className="ota-progress-bar ble-bar" style={{ width: `${bleProgress}%` }} />
                 <span>{bleProgress}%</span>
               </div>
             )}
-
             {bleName && bleState !== 'idle' && bleState !== 'connecting' && (
               <div className="device-info">已连接: <b>{bleName}</b></div>
             )}
-
-            <button
-              className={`compile-btn ble-btn ${bl.cls}`}
-              onClick={handleBleFlash}
-              disabled={!firmware || bleState === 'connecting' || bleState === 'flashing'}
-              title={!firmware ? '请先编译' : ''}
-            >
+            <button className={`compile-btn ble-btn ${bl.cls}`} onClick={handleBleFlash}
+              disabled={!firmware || bleState === 'connecting' || bleState === 'flashing'}>
               {bl.label}
             </button>
           </div>
 
-          {/* ── 状态 & 日志 ── */}
+          {/* 状态 & 日志 */}
           {status && (
             <div className={`compile-status ${otaState === 'ok' ? 'ok' : buildState}`}>
               {status}
             </div>
           )}
-
-          {errorLog && (
-            <pre className="compile-log">{errorLog}</pre>
-          )}
+          {errorLog && <pre className="compile-log">{errorLog}</pre>}
         </div>
       </div>
     </div>
