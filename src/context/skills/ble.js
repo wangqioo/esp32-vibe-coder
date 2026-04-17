@@ -1,60 +1,58 @@
-// BLE skill — from 10-ble_hid_device official example
+
 export const bleSkill = {
   id: 'ble',
-  label: 'BLE (Classic BT / HID)',
-  systemPrompt: `## BLE — Bluedroid stack (HID device example)
+  label: 'BLE (HID)',
+  projectConfig: {
+    srcs: ['esp32_s3_szp.c', 'ble_hidd_demo.c', 'esp_hidd_prf_api.c', 'hid_dev.c', 'hid_device_le_prf.c'],
+    sdkconfig: [
+      'CONFIG_SPIRAM=y',
+      'CONFIG_SPIRAM_MODE_OCT=y',
+      'CONFIG_SPIRAM_SPEED_80M=y',
+      'CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ_240=y',
+      'CONFIG_ESP32S3_INSTRUCTION_CACHE_32KB=y',
+      'CONFIG_ESP32S3_DATA_CACHE_64KB=y',
+      'CONFIG_ESP32S3_DATA_CACHE_LINE_64B=y',
+      'CONFIG_LV_COLOR_16_SWAP=y',
+      'CONFIG_LV_MEM_CUSTOM=y',
+      'CONFIG_LV_FONT_MONTSERRAT_20=y',
+      'CONFIG_BT_ENABLED=y',
+      'CONFIG_BT_BLE_42_FEATURES_SUPPORTED=y',
+      'CONFIG_PARTITION_TABLE_CUSTOM=y',
+    ],
+    idfComponents: [
+      'lvgl/lvgl: "~8.3.0"',
+      'espressif/esp_lvgl_port: "~1.4.0"',
+      'espressif/esp_lcd_touch_ft5x06: "~1.0.6"',
+    ],
+    partitions: [
+      '# Name,   Type, SubType, Offset,  Size, Flags',
+      'nvs,      data, nvs,     0x9000,  0x6000,',
+      'phy_init, data, phy,     ,        0x1000,',
+      'factory,  app,  factory, ,        3M,',
+    ],
+    compileOptions: ['-Wno-unused-const-variable'],
+    spiffs: false,
+  },
+  systemPrompt: `## BLE — Bluedroid HID Device
 
-### Init sequence (from 10-ble_hid_device)
+### Init
 \`\`\`c
-bsp_i2c_init();
-pca9557_init();
-bsp_lvgl_start();
-app_hid_ctrl();  // starts BLE HID
-\`\`\`
-
-### BLE HID init (Bluedroid)
-\`\`\`c
-// NVS first
-nvs_flash_init();
-// Init Bluedroid
-esp_bt_controller_config_t bt_cfg = BT_CONTROLLER_INIT_CONFIG_DEFAULT();
-esp_bt_controller_init(&bt_cfg);
-esp_bt_controller_enable(ESP_BT_MODE_BLE);
-esp_bluedroid_init();
-esp_bluedroid_enable();
-// Register callbacks
-esp_hidd_profile_init();
-esp_ble_gap_register_callback(gap_event_handler);
-esp_hidd_register_callbacks(hidd_event_callback);
-\`\`\`
-
-### HID reports available
-- Mouse (report 1)
-- Keyboard + LED (report 2)
-- Consumer devices (report 3)
-- Vendor (report 4, disabled on Win10)
-
-### NimBLE alternative (lighter stack)
-\`\`\`c
-// sdkconfig: CONFIG_BT_NIMBLE_ENABLED=y
-esp_nimble_hci_init();
-nimble_port_init();
-ble_hs_cfg.sync_cb = ble_app_on_sync;
-nimble_port_freertos_init(ble_host_task);
+bsp_i2c_init(); pca9557_init(); bsp_lvgl_start();
+app_hid_ctrl();
 \`\`\`
 
 ### sdkconfig required
 \`\`\`
 CONFIG_BT_ENABLED=y
-CONFIG_BT_BLUEDROID_ENABLED=y   // for Bluedroid/HID
-// OR:
-CONFIG_BT_NIMBLE_ENABLED=y      // for NimBLE (lighter)
+CONFIG_BT_BLE_42_FEATURES_SUPPORTED=y
+# CONFIG_BT_BLE_50_FEATURES_SUPPORTED is not set
 \`\`\`
 
+### Extra source files needed
+ble_hidd_demo.c, esp_hidd_prf_api.c, hid_dev.c, hid_device_le_prf.c
+
 ### Pitfalls
-- ESP32-S3 is BLE only (no Classic BT audio)
-- nvs_flash_init() before any BT stack init
-- Bluedroid and NimBLE cannot be enabled simultaneously
-- iPhone BLE encryption: ignore GATT_INSUF_ENCRYPTION on descriptor write
-- WiFi + BLE coexistence needs CONFIG_ESP_COEX_ENABLED=y`,
+- nvs_flash_init() before BT stack init
+- CMakeLists needs: target_compile_options -Wno-unused-const-variable
+- ESP32-S3 BLE only (no Classic BT)`,
 }
