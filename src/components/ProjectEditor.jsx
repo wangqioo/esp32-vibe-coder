@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState } from 'react'
 import Editor from '@monaco-editor/react'
 import './ProjectEditor.css'
 
@@ -16,30 +16,32 @@ function langFor(filename) {
   return LANG_MAP[ext] || 'plaintext'
 }
 
-// Auto-generated config files (from skills) — shown read-only styled, but still editable
-const CONFIG_FILES = new Set([
+const CONFIG_NAMES = new Set([
   'CMakeLists.txt', 'main/CMakeLists.txt',
   'sdkconfig.defaults', 'main/idf_component.yml', 'partitions.csv',
 ])
 
-export default function ProjectEditor({ files, activeFile, onFileChange, onFileSelect, onAddFile, onCompile }) {
-  const [renaming, setRenaming] = useState(null)
-  const [newName, setNewName] = useState('')
+function isConfigFile(path) {
+  const name = path.split('/').pop()
+  return CONFIG_NAMES.has(path) || CONFIG_NAMES.has(name) ||
+    name === 'CMakeLists.txt' || name.endsWith('.yml') ||
+    name === 'sdkconfig.defaults' || name === 'partitions.csv'
+}
 
-  const userFiles = Object.keys(files).filter(f => !f.startsWith('__'))
-  const mainFile = userFiles.find(f => f === 'main/main.c' || f === 'main/main.cpp') || userFiles[0]
+export default function ProjectEditor({ files, activeFile, onFileChange, onFileSelect, onCompile }) {
+  const [showConfig, setShowConfig] = useState(false)
 
-  function handleTabClick(path) {
-    onFileSelect(path)
-  }
+  const allFiles = Object.keys(files).filter(f => !f.startsWith('__'))
+  const srcFiles = allFiles.filter(f => !isConfigFile(f))
+  const cfgFiles = allFiles.filter(f => isConfigFile(f))
+  const mainFile = srcFiles.find(f => f.endsWith('main.c') || f.endsWith('main.cpp')) || srcFiles[0]
 
   function handleClose(e, path) {
     e.stopPropagation()
-    // Don't allow closing main file or config files
-    if (path === mainFile || CONFIG_FILES.has(path)) return
+    if (path === mainFile) return
     const remaining = { ...files }
     delete remaining[path]
-    onFileChange(remaining, mainFile)
+    onFileChange(remaining, srcFiles.find(f => f !== path) || mainFile)
   }
 
   function handleAddFile() {
@@ -49,26 +51,24 @@ export default function ProjectEditor({ files, activeFile, onFileChange, onFileS
     onFileChange({ ...files, [path]: `// ${path}\n` }, path)
   }
 
-  const isConfig = CONFIG_FILES.has(activeFile)
+  const activeIsConfig = activeFile ? isConfigFile(activeFile) : false
 
   return (
     <div className="project-editor">
-      {/* Tab bar */}
+      {/* Source file tabs */}
       <div className="pe-tabs">
         <div className="pe-tabs-scroll">
-          {userFiles.map(path => {
+          {srcFiles.map(path => {
             const name = path.split('/').pop()
-            const isMain = path === mainFile
-            const isCfg = CONFIG_FILES.has(path)
             return (
               <div
                 key={path}
-                className={`pe-tab ${activeFile === path ? 'active' : ''} ${isCfg ? 'config' : ''}`}
-                onClick={() => handleTabClick(path)}
+                className={`pe-tab ${activeFile === path ? 'active' : ''}`}
+                onClick={() => onFileSelect(path)}
                 title={path}
               >
                 <span className="pe-tab-name">{name}</span>
-                {!isMain && !isCfg && (
+                {path !== mainFile && (
                   <span className="pe-tab-close" onClick={e => handleClose(e, path)}>×</span>
                 )}
               </div>
@@ -81,10 +81,37 @@ export default function ProjectEditor({ files, activeFile, onFileChange, onFileS
         </div>
       </div>
 
-      {/* Config file notice */}
-      {isConfig && (
+      {/* Config files toggle row */}
+      <div className="pe-config-bar">
+        <button
+          className={`pe-config-toggle ${showConfig ? 'open' : ''}`}
+          onClick={() => setShowConfig(v => !v)}
+        >
+          <span className="pe-config-toggle-arrow">{showConfig ? '▾' : '▸'}</span>
+          配置文件
+          <span className="pe-config-count">{cfgFiles.length}</span>
+        </button>
+        {showConfig && cfgFiles.map(path => {
+          const name = path.split('/').pop()
+          const modified = files[path] !== undefined
+          return (
+            <div
+              key={path}
+              className={`pe-tab config ${activeFile === path ? 'active' : ''}`}
+              onClick={() => onFileSelect(path)}
+              title={path}
+            >
+              <span className="pe-tab-name">{name}</span>
+              {modified && <span className="pe-tab-dot" title="已编辑" />}
+            </div>
+          )
+        })}
+      </div>
+
+      {/* Config notice when editing a config file */}
+      {activeIsConfig && (
         <div className="pe-config-notice">
-          ⚙ 由 Skills 自动生成 · 可手动覆盖
+          ⚙ 由 Skills 自动生成 · 此处编辑将覆盖自动生成的版本
         </div>
       )}
 
