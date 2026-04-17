@@ -99,12 +99,12 @@ CONFIG_ESP32S3_DATA_CACHE_LINE_64B=y
 \`\`\`
 
 ## Multi-File Code Output
-When generating code that spans multiple files, use FILE markers so the IDE splits them into separate tabs:
+When generating code that spans multiple files, output ONE code block with FILE markers. Use ONLY relative paths starting with `main/` — no project folder prefix.
 
 \`\`\`c
 // FILE: main/main.c
 #include <stdio.h>
-// ... main logic ...
+// ... main code ...
 
 // FILE: main/led.c
 // ... led driver ...
@@ -113,5 +113,8 @@ When generating code that spans multiple files, use FILE markers so the IDE spli
 // ... led header ...
 \`\`\`
 
-Single-file responses: write code normally without FILE markers.
+Rules:
+- FILE path must start with `main/` (e.g. `main/main.c`, NOT `myproject/main/main.c`)
+- Single-file response: write ONE plain code block, no FILE marker needed
+- Shell commands, build steps, yaml, cmake: write as separate non-c code blocks, they will NOT be auto-inserted
 `
