@@ -12,7 +12,7 @@ app = Flask(__name__)
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
 
-TEMPLATE_DIR = Path(os.environ.get("TEMPLATE_DIR", "/app/template"))
+TEMPLATE_DIR = Path(os.environ.get("TEMPLATE_DIR", "/compiler/template"))
 BUILD_BASE   = Path("/tmp/builds")
 IDF_PATH     = Path(os.environ.get("IDF_PATH", "/opt/esp/idf"))
 
@@ -60,7 +60,10 @@ def compile_code():
 
         env = os.environ.copy()
         env["IDF_PATH"] = str(IDF_PATH)
-        cmd = [str(IDF_PATH / "tools" / "idf.py"), "-B", str(build_dir / "build"), "build"]
+        cmd = [str(IDF_PATH / "tools" / "idf.py"),
+               "-C", str(build_dir),
+               "-B", str(build_dir / "build"),
+               "build"]
 
         log.info(f"[{job_id}] Build started")
         yield sse({"log": f"[{job_id}] Build started..."})
