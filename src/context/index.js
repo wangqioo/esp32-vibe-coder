@@ -40,8 +40,11 @@ export function buildProjectFiles(projectName, selectedSkillIds = []) {
   const skills = ALL_SKILLS.filter(s => selectedSkillIds.includes(s.id))
   const configs = skills.map(s => s.projectConfig).filter(Boolean)
 
+  // mainExt: 'cpp' means the entry file is main.cpp (e.g. vision skill)
+  const needsCpp = configs.some(c => c.mainExt === 'cpp')
+  const mainFile = needsCpp ? 'main.cpp' : 'main.c'
   // Merge srcs (deduplicate)
-  const srcs = ['main.c', ...new Set(configs.flatMap(c => c.srcs || []))]
+  const srcs = [mainFile, ...new Set(configs.flatMap(c => c.srcs || []))]
 
   // Merge sdkconfig (deduplicate)
   const sdkBase = [
@@ -55,15 +58,21 @@ export function buildProjectFiles(projectName, selectedSkillIds = []) {
   // Merge idf_component.yml (deduplicate)
   const components = [...new Set(configs.flatMap(c => c.idfComponents || []))]
   const idfComponentYml = components.length > 0
-    ? `## IDF Component Manager Manifest File\ndependencies:\n` +
+    ? `# IDF Component Manager Manifest File\ndependencies:\n` +
       components.map(c => `  ${c}`).join('\n') +
       `\n  idf:\n    version: ">=5.0"`
     : null
 
-  // Partitions: use the most comprehensive one (most lines wins)
+  // Partitions: pick the one with the largest factory partition size
   const allPartitions = configs.map(c => c.partitions).filter(Boolean)
+  function factorySize(lines) {
+    const line = lines.find(l => l.includes('factory'))
+    if (!line) return 0
+    const m = line.match(/(\d+)M/)
+    return m ? parseInt(m[1]) : 0
+  }
   const partitionsCsv = allPartitions.length > 0
-    ? allPartitions.reduce((a, b) => a.length >= b.length ? a : b).join('\n')
+    ? allPartitions.reduce((a, b) => factorySize(a) >= factorySize(b) ? a : b).join('\n')
     : null
 
   // spiffs image
@@ -92,6 +101,7 @@ project(${projectName})`
     'CMakeLists.txt': rootCmake,
     'main/CMakeLists.txt': mainCmake,
     'sdkconfig.defaults': sdkconfig,
+    '__mainFile': mainFile,
   }
   if (idfComponentYml) files['main/idf_component.yml'] = idfComponentYml
   if (partitionsCsv)   files['partitions.csv'] = partitionsCsv
