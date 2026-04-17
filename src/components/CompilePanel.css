@@ -109,6 +109,61 @@
   word-break: break-all;
 }
 
+/* OTA section */
+.ota-section {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-muted);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ota-ip-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.device-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  cursor: help;
+}
+.device-dot.online  { background: var(--accent); box-shadow: 0 0 6px var(--accent); }
+.device-dot.offline { background: var(--text-muted); }
+
+.device-info {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+}
+
+.ota-progress-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 6px;
+  margin: 4px 0;
+}
+
+.ota-progress-bar {
+  height: 6px;
+  background: var(--accent);
+  border-radius: 3px;
+  transition: width 0.2s;
+  flex-shrink: 0;
+}
+
+.ota-progress-wrap span {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  white-space: nowrap;
+}
+
 /* Compile toolbar button */
 .toolbar-btn-compile {
   background: var(--accent-muted) !important;
