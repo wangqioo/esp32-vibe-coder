@@ -46,6 +46,7 @@ export default function App() {
   const [rightTab, setRightTab] = useState('chat') // 'chat' | 'log'
   const [pendingLogAnalysis, setPendingLogAnalysis] = useState(null)
   const [boardId] = useState(DEFAULT_BOARD_ID)
+  const [selectedSkills, setSelectedSkills] = useState([])
   const board = BOARDS[boardId]
 
   function handleSaveSettings(s) {
@@ -179,6 +180,8 @@ export default function App() {
                 onInsertCode={handleInsertCode}
                 initialPrompt={pendingLogAnalysis}
                 onConsumePrompt={() => setPendingLogAnalysis(null)}
+                selectedSkills={selectedSkills}
+                onSkillsChange={setSelectedSkills}
               />
             ) : (
               <LogPanel
@@ -207,6 +210,7 @@ export default function App() {
       {showCompile && (
         <CompilePanel
           code={code}
+          selectedSkills={selectedSkills}
           onClose={() => setShowCompile(false)}
         />
       )}
