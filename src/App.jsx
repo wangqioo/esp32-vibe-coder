@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react'
 import Editor from '@monaco-editor/react'
 import ChatPanel from './components/ChatPanel'
 import SettingsModal from './components/SettingsModal'
+import CompilePanel from './components/CompilePanel'
 import { BOARDS, DEFAULT_BOARD_ID } from './context/boards'
 import './App.css'
 
@@ -40,6 +41,7 @@ export default function App() {
   const [code, setCode] = useState(DEFAULT_CODE)
   const [settings, setSettings] = useState(loadSettings)
   const [showSettings, setShowSettings] = useState(false)
+  const [showCompile, setShowCompile] = useState(false)
   const [boardId] = useState(DEFAULT_BOARD_ID)
   const board = BOARDS[boardId]
 
@@ -117,6 +119,13 @@ export default function App() {
               >
                 重置
               </button>
+              <button
+                className="toolbar-btn toolbar-btn-compile"
+                onClick={() => setShowCompile(v => !v)}
+                title="编译并下载固件"
+              >
+                ▶ 编译
+              </button>
             </div>
           </div>
           <div className="editor-wrap">
@@ -159,6 +168,14 @@ export default function App() {
           settings={settings}
           onSave={handleSaveSettings}
           onClose={() => setShowSettings(false)}
+        />
+      )}
+
+      {/* Compile panel */}
+      {showCompile && (
+        <CompilePanel
+          code={code}
+          onClose={() => setShowCompile(false)}
         />
       )}
     </div>
