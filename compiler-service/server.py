@@ -27,8 +27,9 @@ def create_project(build_dir: Path, code: str, project_files: dict):
     """Copy template, inject user code and override project files."""
     shutil.copytree(TEMPLATE_DIR, build_dir)
 
-    # Write user main.c
-    (build_dir / "main" / "main.c").write_text(code)
+    # Write user main file (main.c or main.cpp depending on skill config)
+    main_file = project_files.pop("__mainFile", "main.c")
+    (build_dir / "main" / main_file).write_text(code)
 
     # Override with generated project files (from buildProjectFiles())
     for rel_path, content in project_files.items():
