@@ -59,11 +59,10 @@ function savePatches(patches) {
   localStorage.setItem('skillPatches', JSON.stringify(patches))
 }
 
-export default function ChatPanel({ settings, board, onInsertCode, initialPrompt, onConsumePrompt }) {
+export default function ChatPanel({ settings, board, onInsertCode, initialPrompt, onConsumePrompt, selectedSkills = [], onSkillsChange }) {
   const [messages, setMessages] = useState([])
   const [input, setInput] = useState('')
   const [streaming, setStreaming] = useState(false)
-  const [selectedSkills, setSelectedSkills] = useState([])
   const [knowledgeCard, setKnowledgeCard] = useState(null) // {skillId, type, content}
   const bottomRef = useRef(null)
   const inputRef = useRef(null)
@@ -88,7 +87,7 @@ export default function ChatPanel({ settings, board, onInsertCode, initialPrompt
   const hasConfig = settings.apiKey && settings.baseUrl && settings.model
 
   function toggleSkill(id) {
-    setSelectedSkills(prev =>
+    onSkillsChange?.(prev =>
       prev.includes(id) ? prev.filter(s => s !== id) : [...prev, id]
     )
   }
