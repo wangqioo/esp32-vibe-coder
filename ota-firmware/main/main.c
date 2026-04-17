@@ -26,6 +26,7 @@
 #include "esp_app_desc.h"
 #include "nvs_flash.h"
 #include "lwip/inet.h"
+#include "ota_ble.h"
 
 /* ── WiFi 凭据 ─────────────────────────────────────────────── */
 #define WIFI_SSID     CONFIG_OTA_WIFI_SSID
@@ -247,6 +248,7 @@ void app_main(void)
     ESP_ERROR_CHECK(nvs_flash_init());
     wifi_init();
     start_server();
+    ble_ota_start(); /* BLE OTA — 无 WiFi 时的备用烧录通道 */
 
     /* 心跳日志 */
     while (1) {

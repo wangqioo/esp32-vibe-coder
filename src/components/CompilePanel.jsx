@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { compileFirmware, downloadBin, loadCompilerUrl, saveCompilerUrl } from '../utils/compiler'
 import { pingDevice, getDeviceInfo, pushOta, loadOtaIp, saveOtaIp } from '../utils/ota'
+import { connectBle } from '../utils/bleOta'
 import './CompilePanel.css'
 
 const BUILD = {
@@ -17,6 +18,14 @@ const OTA = {
   error:    { label: '✗ 推送失败',  cls: 'error' },
 }
 
+const BLE = {
+  idle:       { label: '⬡ BLE 烧录',   cls: '' },
+  connecting: { label: '⬡ 配对中...',  cls: 'building' },
+  flashing:   { label: '⬡ 烧录中...',  cls: 'building' },
+  ok:         { label: '✓ BLE 成功',   cls: 'ok' },
+  error:      { label: '✗ BLE 失败',   cls: 'error' },
+}
+
 export default function CompilePanel({ code, onClose }) {
   const [compilerUrl, setCompilerUrl] = useState(loadCompilerUrl)
   const [buildState, setBuildState]   = useState('idle')
@@ -24,9 +33,13 @@ export default function CompilePanel({ code, onClose }) {
   const [status,     setStatus]       = useState('')
   const [errorLog,   setErrorLog]     = useState('')
   const [firmware,   setFirmware]     = useState(null)
-  const [otaIp,      setOtaIp]        = useState(loadOtaIp)
-  const [deviceInfo, setDeviceInfo]   = useState(null)
-  const [otaProgress, setOtaProgress] = useState(0)
+  const [otaIp,       setOtaIp]        = useState(loadOtaIp)
+  const [deviceInfo,  setDeviceInfo]   = useState(null)
+  const [otaProgress, setOtaProgress]  = useState(0)
+  const [bleState,    setBleState]     = useState('idle')
+  const [bleProgress, setBleProgress]  = useState(0)
+  const [bleName,     setBleName]      = useState('')
+  const bleSessionRef = useRef(null)
 
   /* 设备探测 */
   useEffect(() => {
@@ -81,8 +94,46 @@ export default function CompilePanel({ code, onClose }) {
     }
   }
 
-  const b = BUILD[buildState]
-  const o = OTA[otaState]
+  async function handleBleFlash() {
+    if (!firmware) return
+    setBleState('connecting')
+    setBleProgress(0)
+    setStatus('请在弹窗中选择 ESP32-Vibe-OTA 设备...')
+
+    let session
+    try {
+      session = await connectBle()
+      bleSessionRef.current = session
+      setBleName(session.deviceName)
+      setBleState('flashing')
+      setStatus(`BLE 已连接: ${session.deviceName}，开始烧录...`)
+    } catch (e) {
+      setBleState('error')
+      setStatus('BLE 连接失败: ' + e.message)
+      return
+    }
+
+    try {
+      const buf = await firmware.arrayBuffer()
+      await session.flash(buf, ({ sent, total, percent }) => {
+        setBleProgress(percent)
+        setStatus(`BLE 烧录中... ${percent}%  (${(sent/1024).toFixed(0)} / ${(total/1024).toFixed(0)} KB)`)
+      })
+      setStatus('BLE 烧录成功！设备正在重启...')
+      setBleState('ok')
+    } catch (e) {
+      setErrorLog(e.message)
+      setStatus('BLE 烧录失败')
+      setBleState('error')
+    } finally {
+      session.disconnect()
+      bleSessionRef.current = null
+    }
+  }
+
+  const b  = BUILD[buildState]
+  const o  = OTA[otaState]
+  const bl = BLE[bleState]
 
   return (
     <div className="compile-backdrop" onClick={e => e.target === e.currentTarget && onClose()}>
@@ -159,6 +210,35 @@ export default function CompilePanel({ code, onClose }) {
                 </button>
               )}
             </div>
+          </div>
+
+          {/* ── BLE OTA ── */}
+          <div className="ota-section ble-section">
+            <label className="field-label">BLE 烧录（无需 WiFi）</label>
+            <p className="compile-hint">
+              通过蓝牙直接烧录——适用于 WiFi 未配置或信号弱的场景。<br/>
+              需要 Chrome / Edge 桌面版，设备需运行 OTA 固件。
+            </p>
+
+            {bleState === 'flashing' && (
+              <div className="ota-progress-wrap">
+                <div className="ota-progress-bar ble-bar" style={{ width: `${bleProgress}%` }} />
+                <span>{bleProgress}%</span>
+              </div>
+            )}
+
+            {bleName && bleState !== 'idle' && bleState !== 'connecting' && (
+              <div className="device-info">已连接: <b>{bleName}</b></div>
+            )}
+
+            <button
+              className={`compile-btn ble-btn ${bl.cls}`}
+              onClick={handleBleFlash}
+              disabled={!firmware || bleState === 'connecting' || bleState === 'flashing'}
+              title={!firmware ? '请先编译' : ''}
+            >
+              {bl.label}
+            </button>
           </div>
 
           {/* ── 状态 & 日志 ── */}

@@ -175,3 +175,44 @@
   background: var(--accent) !important;
   color: white !important;
 }
+
+/* BLE OTA section */
+.ble-section {
+  border-top: 1px solid var(--border-muted);
+  padding-top: 14px;
+  margin-top: 4px;
+}
+
+.ble-btn {
+  background: var(--bg-tertiary);
+  border-color: #7c5cbf;
+  color: #a78bda;
+}
+
+.ble-btn:hover:not(:disabled) {
+  background: #2e1f4a;
+  border-color: #a78bda;
+  color: #c4a8f0;
+}
+
+.ble-btn.building {
+  border-color: #a78bda;
+  color: #a78bda;
+  animation: pulse-border 1.5s ease-in-out infinite;
+}
+
+.ble-btn.ok {
+  background: #1a3a2a;
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.ble-btn.error {
+  background: #3a1a1a;
+  border-color: var(--red);
+  color: var(--red);
+}
+
+.ble-bar {
+  background: #a78bda !important;
+}
