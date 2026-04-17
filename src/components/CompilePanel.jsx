@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { compileFirmware, downloadBin, loadCompilerUrl, saveCompilerUrl } from '../utils/compiler'
 import { getDeviceInfo, pushOta, loadOtaIp, saveOtaIp } from '../utils/ota'
 import { connectBle } from '../utils/bleOta'
+import { buildProjectFiles } from '../context/index'
 import './CompilePanel.css'
 
 const BUILD = {
@@ -24,7 +25,7 @@ const BLE = {
   error:      { label: '✗ BLE 失败',  cls: 'error' },
 }
 
-export default function CompilePanel({ projectFiles: projectFilesProp, onClose }) {
+export default function CompilePanel({ projectFiles: sourceProp, selectedSkills, onClose }) {
   const [compilerUrl, setCompilerUrl] = useState(loadCompilerUrl)
   const [buildState,  setBuildState]  = useState('idle')
   const [otaState,    setOtaState]    = useState('idle')
@@ -40,7 +41,13 @@ export default function CompilePanel({ projectFiles: projectFilesProp, onClose }
   const [showFiles,   setShowFiles]   = useState(false)
   const bleSessionRef = useRef(null)
 
-  const projectFiles = projectFilesProp || {}
+  // Merge user source files with skill-generated config files
+  const generatedCfg = (() => {
+    const cfg = buildProjectFiles('vibe_app', selectedSkills || [])
+    delete cfg['__mainFile']
+    return cfg
+  })()
+  const projectFiles = { ...(sourceProp || {}), ...generatedCfg }
 
   useEffect(() => {
     if (!otaIp) return
