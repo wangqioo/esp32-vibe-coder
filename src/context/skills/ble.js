@@ -19,11 +19,7 @@ export const bleSkill = {
       'CONFIG_BT_BLE_42_FEATURES_SUPPORTED=y',
       'CONFIG_PARTITION_TABLE_CUSTOM=y',
     ],
-    idfComponents: [
-      'lvgl/lvgl: "~8.3.0"',
-      'espressif/esp_lvgl_port: "~1.4.0"',
-      'espressif/esp_lcd_touch_ft5x06: "~1.0.6"',
-    ],
+    idfComponents: [],
     partitions: [
       '# Name,   Type, SubType, Offset,  Size, Flags',
       'nvs,      data, nvs,     0x9000,  0x6000,',
