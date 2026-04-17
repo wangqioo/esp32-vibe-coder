@@ -41,13 +41,13 @@ export default function CompilePanel({ projectFiles: sourceProp, selectedSkills,
   const [showFiles,   setShowFiles]   = useState(false)
   const bleSessionRef = useRef(null)
 
-  // Merge user source files with skill-generated config files
+  // Merge: skills-generated config as base, user-edited files take priority
   const generatedCfg = (() => {
     const cfg = buildProjectFiles('vibe_app', selectedSkills || [])
     delete cfg['__mainFile']
     return cfg
   })()
-  const projectFiles = { ...(sourceProp || {}), ...generatedCfg }
+  const projectFiles = { ...generatedCfg, ...(sourceProp || {}) }
 
   useEffect(() => {
     if (!otaIp) return
