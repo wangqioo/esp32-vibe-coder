@@ -28,7 +28,7 @@ Current skill IDs loaded: ${selectedSkillIds.join(', ') || 'none'}
 
 Task: Does your reply contain a pitfall, a correct usage pattern, or an init sequence that is NOT already documented in the loaded skills?
 If YES, respond with ONLY valid JSON (no markdown):
-{"found": true, "skillId": "<one of: lvgl|audio|camera|imu|wifi|ble|sdcard>", "type": "pitfall|usage", "content": "<one concise sentence>"}
+{"found": true, "skillId": "<one of: lvgl|audio|camera|imu|wifi|ble|sdcard|gpio|speech|vision|handheld>", "type": "pitfall|usage", "content": "<one concise sentence>"}
 If NO new knowledge, respond with ONLY: {"found": false}`
 
   let result = ''
@@ -192,8 +192,22 @@ export default function ChatPanel({ settings, board, onInsertCode, initialPrompt
           <span className="code-lang">{lang}</span>
           <div className="code-actions">
             <button className="code-btn" onClick={() => navigator.clipboard.writeText(code)}>复制</button>
-            <button className="code-btn code-btn-insert" onClick={() => onInsertCode?.(code)}>
-              插入编辑器
+            <button className="code-btn code-btn-insert" onClick={() => {
+              // Parse // FILE: path markers into multi-file object
+              const filePattern = /\/\/\s*FILE:\s*(\S+)\n([\s\S]*?)(?=\/\/\s*FILE:|$)/g
+              const matches = [...code.matchAll(filePattern)]
+              if (matches.length > 1) {
+                const fileMap = {}
+                matches.forEach(m => {
+                  const p = m[1].includes('/') ? m[1] : `main/${m[1]}`
+                  fileMap[p] = m[2].trimEnd()
+                })
+                onInsertCode?.(fileMap)
+              } else {
+                onInsertCode?.(code)
+              }
+            }}>
+              写入项目
             </button>
           </div>
         </div>
