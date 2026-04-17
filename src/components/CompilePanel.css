@@ -102,11 +102,14 @@
   padding: 12px;
   font-size: 11px;
   font-family: var(--font-mono);
-  color: var(--red);
-  max-height: 240px;
+  color: var(--text-secondary);
+  max-height: 280px;
   overflow-y: auto;
   white-space: pre-wrap;
   word-break: break-all;
+}
+.compile-log.error-log { color: var(--red); }
+.compile-log.build-log { color: var(--text-secondary); border-color: var(--accent);
 }
 
 /* OTA section */

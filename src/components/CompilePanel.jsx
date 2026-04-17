@@ -38,6 +38,8 @@ export default function CompilePanel({ projectFiles: sourceProp, selectedSkills,
   const [bleProgress, setBleProgress] = useState(0)
   const [bleName,     setBleName]     = useState('')
   const [showFiles,   setShowFiles]   = useState(false)
+  const [buildLog,    setBuildLog]    = useState([])
+  const logEndRef = useRef(null)
   const bleSessionRef = useRef(null)
 
   // Merge: skills-generated config as base, user-edited files take priority
@@ -61,15 +63,17 @@ export default function CompilePanel({ projectFiles: sourceProp, selectedSkills,
     setBuildState('building')
     setOtaState('idle')
     setErrorLog('')
+    setBuildLog([])
     setFirmware(null)
     setStatus('正在连接编译服务器...')
-    // Extract main source from projectFiles
     const mainPath = Object.keys(projectFiles).find(k => k.endsWith('main.c') || k.endsWith('main.cpp')) || 'main/main.c'
     const code = projectFiles[mainPath] || ''
-    // Send all non-__ files except the main file (server writes it separately)
     const configFiles = Object.fromEntries(Object.entries(projectFiles).filter(([k]) => !k.startsWith('__') && k !== mainPath))
     try {
-      const blob = await compileFirmware(code, configFiles, setStatus)
+      const blob = await compileFirmware(code, configFiles, setStatus, line => {
+        setBuildLog(prev => [...prev, line])
+        setTimeout(() => logEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 0)
+      })
       setFirmware(blob)
       setStatus(`编译成功  ·  ${(blob.size / 1024).toFixed(1)} KB`)
       setBuildState('ok')
@@ -239,7 +243,15 @@ export default function CompilePanel({ projectFiles: sourceProp, selectedSkills,
               {status}
             </div>
           )}
-          {errorLog && <pre className="compile-log">{errorLog}</pre>}
+          {buildLog.length > 0 && (
+            <pre className="compile-log build-log">
+              {buildLog.join('\n')}
+              <span ref={logEndRef} />
+            </pre>
+          )}
+          {errorLog && buildLog.length === 0 && (
+            <pre className="compile-log error-log">{errorLog}</pre>
+          )}
         </div>
       </div>
     </div>
