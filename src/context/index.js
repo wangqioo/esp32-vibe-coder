@@ -6,6 +6,10 @@ import { imuSkill } from './skills/imu'
 import { wifiSkill } from './skills/wifi'
 import { bleSkill } from './skills/ble'
 import { sdcardSkill } from './skills/sdcard'
+import { gpioSkill } from './skills/gpio'
+import { speechSkill } from './skills/speech'
+import { visionSkill } from './skills/vision'
+import { handheldSkill } from './skills/handheld'
 
 export const ALL_SKILLS = [
   lvglSkill,
@@ -15,6 +19,10 @@ export const ALL_SKILLS = [
   wifiSkill,
   bleSkill,
   sdcardSkill,
+  gpioSkill,
+  speechSkill,
+  visionSkill,
+  handheldSkill,
 ]
 
 // Build system prompt from base + selected skill ids
