@@ -1,16 +1,17 @@
-import { useState, useCallback } from 'react'
-import Editor from '@monaco-editor/react'
+import { useState, useCallback, useEffect } from 'react'
 import ChatPanel from './components/ChatPanel'
 import LogPanel from './components/LogPanel'
 import SettingsModal from './components/SettingsModal'
 import CompilePanel from './components/CompilePanel'
+import ProjectEditor from './components/ProjectEditor'
 import { BOARDS, DEFAULT_BOARD_ID } from './context/boards'
+import { buildProjectFiles } from './context/index'
 import './App.css'
 
 const STORAGE_KEY = 'esp32-vibe-coder-settings'
 
-const DEFAULT_CODE = `// ESP32 Vibe Coder — 立创实战派ESP32-S3
-// 在右侧与 AI 对话，生成的代码可以直接插入到这里
+const DEFAULT_MAIN = `// ESP32 Vibe Coder — 立创实战派ESP32-S3
+// 在右侧与 AI 对话，AI 会直接组织整个项目的文件
 // ESP-IDF v5.4
 
 #include <stdio.h>
@@ -18,9 +19,9 @@ const DEFAULT_CODE = `// ESP32 Vibe Coder — 立创实战派ESP32-S3
 
 void app_main(void)
 {
-    bsp_i2c_init();   // I2C 初始化
-    pca9557_init();   // IO 扩展芯片初始化
-    bsp_lvgl_start(); // 初始化液晶屏 LVGL 接口
+    bsp_i2c_init();
+    pca9557_init();
+    bsp_lvgl_start();
 
     // 在这里开始你的应用...
 }
@@ -33,36 +34,79 @@ function loadSettings() {
   } catch {}
   return { baseUrl: '', apiKey: '', model: '' }
 }
+function saveSettings(s) { localStorage.setItem(STORAGE_KEY, JSON.stringify(s)) }
 
-function saveSettings(s) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(s))
+function initProjectFiles(selectedSkills) {
+  const cfg = buildProjectFiles('vibe_app', selectedSkills)
+  const mainFile = cfg['__mainFile'] || 'main.c'
+  delete cfg['__mainFile']
+  const path = `main/${mainFile}`
+  return { files: { [path]: DEFAULT_MAIN, ...cfg }, activeFile: path }
 }
 
 export default function App() {
-  const [code, setCode] = useState(DEFAULT_CODE)
-  const [settings, setSettings] = useState(loadSettings)
+  const [settings, setSettings]       = useState(loadSettings)
   const [showSettings, setShowSettings] = useState(false)
-  const [showCompile, setShowCompile] = useState(false)
-  const [rightTab, setRightTab] = useState('chat') // 'chat' | 'log'
+  const [showCompile, setShowCompile]  = useState(false)
+  const [rightTab, setRightTab]        = useState('chat')
   const [pendingLogAnalysis, setPendingLogAnalysis] = useState(null)
-  const [boardId] = useState(DEFAULT_BOARD_ID)
+  const [boardId]                      = useState(DEFAULT_BOARD_ID)
   const [selectedSkills, setSelectedSkills] = useState([])
   const board = BOARDS[boardId]
 
-  function handleSaveSettings(s) {
-    setSettings(s)
-    saveSettings(s)
-  }
+  const [projectFiles, setProjectFiles] = useState(() => {
+    const { files } = initProjectFiles([])
+    return files
+  })
+  const [activeFile, setActiveFile] = useState('main/main.c')
 
-  const handleInsertCode = useCallback((newCode) => {
-    setCode(newCode)
-  }, [])
+  // When skills change, regenerate config files but preserve user-edited source files
+  useEffect(() => {
+    const cfg = buildProjectFiles('vibe_app', selectedSkills)
+    const mainFile = cfg['__mainFile'] || 'main.c'
+    delete cfg['__mainFile']
+    const mainPath = `main/${mainFile}`
+
+    setProjectFiles(prev => {
+      // Keep all user source files (.c/.cpp/.h), regenerate config files
+      const userSrcs = Object.fromEntries(
+        Object.entries(prev).filter(([k]) =>
+          k.endsWith('.c') || k.endsWith('.cpp') || k.endsWith('.h') || k.endsWith('.hpp')
+        )
+      )
+      // Ensure main file exists
+      if (!userSrcs[mainPath]) userSrcs[mainPath] = DEFAULT_MAIN
+      return { ...userSrcs, ...cfg }
+    })
+    setActiveFile(prev => {
+      if (prev.endsWith('.c') || prev.endsWith('.cpp') || prev.endsWith('.h')) return prev
+      return mainPath
+    })
+  }, [selectedSkills])
+
+  function handleSaveSettings(s) { setSettings(s); saveSettings(s) }
+
+  // Called by AI with a map of { filename: code } or a single code string
+  const handleInsertCode = useCallback((codeOrFiles) => {
+    if (typeof codeOrFiles === 'string') {
+      // Single code block — write to active source file
+      const target = activeFile.endsWith('.c') || activeFile.endsWith('.cpp') || activeFile.endsWith('.h')
+        ? activeFile
+        : 'main/main.c'
+      setProjectFiles(prev => ({ ...prev, [target]: codeOrFiles }))
+      setActiveFile(target)
+    } else {
+      // Multi-file object from AI
+      setProjectFiles(prev => ({ ...prev, ...codeOrFiles }))
+      const first = Object.keys(codeOrFiles)[0]
+      if (first) setActiveFile(first)
+    }
+  }, [activeFile])
 
   const hasConfig = settings.apiKey && settings.baseUrl && settings.model
 
   return (
     <div className="app">
-      {/* Header */}
       <header className="app-header">
         <div className="header-left">
           <div className="logo">
@@ -75,100 +119,42 @@ export default function App() {
             <span className="board-selector-name">{board.name}</span>
           </div>
         </div>
-
         <div className="header-right">
           <div className="model-info">
             {hasConfig ? (
-              <>
-                <span className="model-dot online" />
-                <span className="model-name">{settings.model}</span>
-              </>
+              <><span className="model-dot online" /><span className="model-name">{settings.model}</span></>
             ) : (
-              <>
-                <span className="model-dot offline" />
-                <span className="model-name muted">未配置 API</span>
-              </>
+              <><span className="model-dot offline" /><span className="model-name muted">未配置 API</span></>
             )}
           </div>
-          <button
-            className={`settings-btn ${!hasConfig ? 'pulse' : ''}`}
-            onClick={() => setShowSettings(true)}
-            title="AI 配置"
-          >
+          <button className={`settings-btn ${!hasConfig ? 'pulse' : ''}`} onClick={() => setShowSettings(true)}>
             ⚙ 配置 AI
           </button>
         </div>
       </header>
 
-      {/* Main layout */}
       <div className="app-body">
-        {/* Left: Code editor */}
+        {/* Left: Project editor */}
         <div className="editor-pane">
-          <div className="editor-toolbar">
-            <div className="file-tab active">
-              <span>main.c</span>
-            </div>
-            <div className="editor-toolbar-right">
-              <button
-                className="toolbar-btn"
-                onClick={() => navigator.clipboard.writeText(code)}
-                title="复制全部代码"
-              >
-                复制代码
-              </button>
-              <button
-                className="toolbar-btn"
-                onClick={() => setCode(DEFAULT_CODE)}
-                title="重置为默认代码"
-              >
-                重置
-              </button>
-              <button
-                className="toolbar-btn toolbar-btn-compile"
-                onClick={() => setShowCompile(v => !v)}
-                title="编译并下载固件"
-              >
-                ▶ 编译
-              </button>
-            </div>
-          </div>
-          <div className="editor-wrap">
-            <Editor
-              language="c"
-              theme="vs-dark"
-              value={code}
-              onChange={val => setCode(val || '')}
-              options={{
-                fontSize: 13,
-                fontFamily: "'JetBrains Mono', 'Fira Code', Consolas, monospace",
-                fontLigatures: true,
-                minimap: { enabled: false },
-                scrollBeyondLastLine: false,
-                lineNumbers: 'on',
-                renderWhitespace: 'none',
-                tabSize: 4,
-                wordWrap: 'off',
-                padding: { top: 12, bottom: 12 },
-                smoothScrolling: true,
-                cursorSmoothCaretAnimation: 'on',
-              }}
-            />
-          </div>
+          <ProjectEditor
+            files={projectFiles}
+            activeFile={activeFile}
+            onFileChange={(newFiles, newActive) => {
+              setProjectFiles(newFiles)
+              if (newActive !== undefined) setActiveFile(newActive)
+            }}
+            onFileSelect={setActiveFile}
+            onCompile={() => setShowCompile(true)}
+          />
         </div>
 
-        {/* Right: tabbed Chat + Log */}
+        {/* Right: Chat + Log */}
         <div className="right-pane">
           <div className="right-tabs">
-            <button
-              className={`right-tab ${rightTab === 'chat' ? 'active' : ''}`}
-              onClick={() => setRightTab('chat')}
-            >
+            <button className={`right-tab ${rightTab === 'chat' ? 'active' : ''}`} onClick={() => setRightTab('chat')}>
               🤖 AI 助手
             </button>
-            <button
-              className={`right-tab ${rightTab === 'log' ? 'active' : ''}`}
-              onClick={() => setRightTab('log')}
-            >
+            <button className={`right-tab ${rightTab === 'log' ? 'active' : ''}`} onClick={() => setRightTab('log')}>
               📟 设备日志
             </button>
           </div>
@@ -197,20 +183,13 @@ export default function App() {
         </div>
       </div>
 
-      {/* Settings modal */}
       {showSettings && (
-        <SettingsModal
-          settings={settings}
-          onSave={handleSaveSettings}
-          onClose={() => setShowSettings(false)}
-        />
+        <SettingsModal settings={settings} onSave={handleSaveSettings} onClose={() => setShowSettings(false)} />
       )}
 
-      {/* Compile panel */}
       {showCompile && (
         <CompilePanel
-          code={code}
-          selectedSkills={selectedSkills}
+          projectFiles={projectFiles}
           onClose={() => setShowCompile(false)}
         />
       )}
