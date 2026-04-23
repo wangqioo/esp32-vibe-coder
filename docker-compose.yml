@@ -1,0 +1,12 @@
+services:
+  esp32-vibe-coder:
+    image: esp32-vibe-coder:latest
+    container_name: esp32-vibe-coder
+    restart: unless-stopped
+    network_mode: host
+
+  esp32-compiler:
+    image: esp32-compiler:latest
+    container_name: esp32-compiler
+    restart: unless-stopped
+    network_mode: host

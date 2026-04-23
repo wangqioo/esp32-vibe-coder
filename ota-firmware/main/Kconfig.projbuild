@@ -1,0 +1,15 @@
+menu "Vibe OTA Configuration"
+
+    config OTA_WIFI_SSID
+        string "WiFi SSID"
+        default "MyWiFi"
+        help
+            Your WiFi network name.
+
+    config OTA_WIFI_PASSWORD
+        string "WiFi Password"
+        default "password"
+        help
+            Your WiFi password.
+
+endmenu
