@@ -25,6 +25,19 @@ const BLE = {
   error:      { label: '✗ BLE 失败',  cls: 'error' },
 }
 
+function summarizeCompileError(errorLog, buildLog) {
+  if (errorLog) return errorLog
+
+  const lines = buildLog.map(line => line.replace(/\x1b\[[0-9;]*m/g, '').trim()).filter(Boolean)
+  const firstError = lines.findIndex(line =>
+    /CMake Error|fatal error| error:|FAILED:|undefined reference|cmake failed|ninja: build stopped/i.test(line)
+  )
+  if (firstError === -1) return lines.slice(-20).join('\n')
+
+  const end = Math.min(lines.length, firstError + 14)
+  return lines.slice(firstError, end).join('\n')
+}
+
 export default function CompilePanel({ projectFiles: sourceProp, selectedSkills, onClose }) {
   const [buildState,  setBuildState]  = useState('idle')
   const [otaState,    setOtaState]    = useState('idle')
@@ -156,6 +169,8 @@ export default function CompilePanel({ projectFiles: sourceProp, selectedSkills,
   const b  = BUILD[buildState]
   const o  = OTA[otaState]
   const bl = BLE[bleState]
+  const failureSummary = buildState === 'error' ? summarizeCompileError(errorLog, buildLog) : ''
+  const fullFailureLog = buildState === 'error' ? [...buildLog, errorLog].filter(Boolean).join('\n') : ''
 
   return (
     <div className="compile-backdrop" onClick={e => e.target === e.currentTarget && onClose()}>
@@ -256,23 +271,34 @@ export default function CompilePanel({ projectFiles: sourceProp, selectedSkills,
               {status}
             </div>
           )}
-          {buildLog.length > 0 && (
+          {failureSummary && (
             <div className="log-wrap">
-              {buildState === 'error' && (
-                <div className="log-toolbar error">
-                  <span>编译日志</span>
-                  <button className="copy-log-btn" onClick={() => handleCopyLog(buildLog.join('\n'))}>
-                    {copyState === 'ok' ? '已复制' : copyState === 'error' ? '复制失败' : '复制失败日志'}
+              <div className="log-toolbar error">
+                <span>错误概要</span>
+                <button className="copy-log-btn" onClick={() => handleCopyLog(failureSummary)}>
+                  {copyState === 'ok' ? '已复制' : copyState === 'error' ? '复制失败' : '复制概要'}
+                </button>
+              </div>
+              <pre className="compile-log error-log summary-log">{failureSummary}</pre>
+            </div>
+          )}
+          {buildLog.length > 0 && (
+            <details className="log-wrap full-log-wrap" open={buildState !== 'error'}>
+              <summary className="log-toolbar">
+                <span>完整编译日志</span>
+                {buildState === 'error' && (
+                  <button className="copy-log-btn" onClick={e => { e.preventDefault(); handleCopyLog(fullFailureLog) }}>
+                    {copyState === 'ok' ? '已复制' : copyState === 'error' ? '复制失败' : '复制完整日志'}
                   </button>
-                </div>
-              )}
+                )}
+              </summary>
               <pre className="compile-log build-log">
                 {buildLog.join('\n')}
                 <span ref={logEndRef} />
               </pre>
-            </div>
+            </details>
           )}
-          {errorLog && buildLog.length === 0 && (
+          {errorLog && buildLog.length === 0 && !failureSummary && (
             <div className="log-wrap">
               <div className="log-toolbar error">
                 <span>错误日志</span>
