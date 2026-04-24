@@ -38,6 +38,22 @@ function summarizeCompileError(errorLog, buildLog) {
   return lines.slice(firstError, end).join('\n')
 }
 
+function copyTextFallback(text) {
+  const textarea = document.createElement('textarea')
+  textarea.value = text
+  textarea.setAttribute('readonly', '')
+  textarea.style.position = 'fixed'
+  textarea.style.left = '-9999px'
+  textarea.style.top = '0'
+  document.body.appendChild(textarea)
+  textarea.focus()
+  textarea.select()
+  textarea.setSelectionRange(0, textarea.value.length)
+  const ok = document.execCommand('copy')
+  document.body.removeChild(textarea)
+  if (!ok) throw new Error('copy failed')
+}
+
 export default function CompilePanel({ projectFiles: sourceProp, selectedSkills, onClose }) {
   const [buildState,  setBuildState]  = useState('idle')
   const [otaState,    setOtaState]    = useState('idle')
@@ -102,11 +118,21 @@ export default function CompilePanel({ projectFiles: sourceProp, selectedSkills,
   async function handleCopyLog(text) {
     if (!text) return
     try {
-      await navigator.clipboard.writeText(text)
+      if (navigator.clipboard?.writeText && window.isSecureContext) {
+        await navigator.clipboard.writeText(text)
+      } else {
+        copyTextFallback(text)
+      }
       setCopyState('ok')
       setTimeout(() => setCopyState('idle'), 1500)
     } catch {
-      setCopyState('error')
+      try {
+        copyTextFallback(text)
+        setCopyState('ok')
+        setTimeout(() => setCopyState('idle'), 1500)
+      } catch {
+        setCopyState('error')
+      }
     }
   }
 
