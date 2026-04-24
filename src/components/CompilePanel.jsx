@@ -86,10 +86,10 @@ export default function CompilePanel({ projectFiles: sourceProp, selectedSkills,
     }
   }
 
-  async function handleCopyErrorLog() {
-    if (!errorLog) return
+  async function handleCopyLog(text) {
+    if (!text) return
     try {
-      await navigator.clipboard.writeText(errorLog)
+      await navigator.clipboard.writeText(text)
       setCopyState('ok')
       setTimeout(() => setCopyState('idle'), 1500)
     } catch {
@@ -257,17 +257,27 @@ export default function CompilePanel({ projectFiles: sourceProp, selectedSkills,
             </div>
           )}
           {buildLog.length > 0 && (
-            <pre className="compile-log build-log">
-              {buildLog.join('\n')}
-              <span ref={logEndRef} />
-            </pre>
+            <div className="log-wrap">
+              {buildState === 'error' && (
+                <div className="log-toolbar error">
+                  <span>编译日志</span>
+                  <button className="copy-log-btn" onClick={() => handleCopyLog(buildLog.join('\n'))}>
+                    {copyState === 'ok' ? '已复制' : copyState === 'error' ? '复制失败' : '复制失败日志'}
+                  </button>
+                </div>
+              )}
+              <pre className="compile-log build-log">
+                {buildLog.join('\n')}
+                <span ref={logEndRef} />
+              </pre>
+            </div>
           )}
           {errorLog && buildLog.length === 0 && (
-            <div className="error-log-wrap">
-              <div className="error-log-toolbar">
+            <div className="log-wrap">
+              <div className="log-toolbar error">
                 <span>错误日志</span>
-                <button className="copy-log-btn" onClick={handleCopyErrorLog}>
-                  {copyState === 'ok' ? '已复制' : copyState === 'error' ? '复制失败' : '复制'}
+                <button className="copy-log-btn" onClick={() => handleCopyLog(errorLog)}>
+                  {copyState === 'ok' ? '已复制' : copyState === 'error' ? '复制失败' : '复制失败日志'}
                 </button>
               </div>
               <pre className="compile-log error-log">{errorLog}</pre>
