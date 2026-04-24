@@ -39,6 +39,7 @@ export default function CompilePanel({ projectFiles: sourceProp, selectedSkills,
   const [bleName,     setBleName]     = useState('')
   const [showFiles,   setShowFiles]   = useState(false)
   const [buildLog,    setBuildLog]    = useState([])
+  const [copyState,   setCopyState]   = useState('idle')
   const logEndRef = useRef(null)
   const bleSessionRef = useRef(null)
 
@@ -63,6 +64,7 @@ export default function CompilePanel({ projectFiles: sourceProp, selectedSkills,
     setBuildState('building')
     setOtaState('idle')
     setErrorLog('')
+    setCopyState('idle')
     setBuildLog([])
     setFirmware(null)
     setStatus('正在连接编译服务器...')
@@ -81,6 +83,17 @@ export default function CompilePanel({ projectFiles: sourceProp, selectedSkills,
       setErrorLog(e.message)
       setStatus('编译失败，查看错误日志')
       setBuildState('error')
+    }
+  }
+
+  async function handleCopyErrorLog() {
+    if (!errorLog) return
+    try {
+      await navigator.clipboard.writeText(errorLog)
+      setCopyState('ok')
+      setTimeout(() => setCopyState('idle'), 1500)
+    } catch {
+      setCopyState('error')
     }
   }
 
@@ -250,7 +263,15 @@ export default function CompilePanel({ projectFiles: sourceProp, selectedSkills,
             </pre>
           )}
           {errorLog && buildLog.length === 0 && (
-            <pre className="compile-log error-log">{errorLog}</pre>
+            <div className="error-log-wrap">
+              <div className="error-log-toolbar">
+                <span>错误日志</span>
+                <button className="copy-log-btn" onClick={handleCopyErrorLog}>
+                  {copyState === 'ok' ? '已复制' : copyState === 'error' ? '复制失败' : '复制'}
+                </button>
+              </div>
+              <pre className="compile-log error-log">{errorLog}</pre>
+            </div>
           )}
         </div>
       </div>
