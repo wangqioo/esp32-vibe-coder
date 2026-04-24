@@ -28,6 +28,10 @@ export const lvglSkill = {
 
 ### Init
 \`\`\`c
+#include "esp32_s3_szp.h"
+#include "lvgl.h"
+#include "esp_lvgl_port.h"
+
 bsp_i2c_init();
 pca9557_init();   // MUST before LCD
 bsp_lvgl_start(); // LCD + touch + backlight + LVGL
@@ -49,5 +53,6 @@ lv_obj_set_style_text_font(obj, &font_alipuhui20, LV_STATE_DEFAULT);
 ### Pitfalls
 - pca9557_init() MUST before bsp_lvgl_start()
 - Touch axes swapped: x_max=240, y_max=320
-- Never call LVGL outside lvgl_port_lock/unlock from tasks`,
+- Never call LVGL outside lvgl_port_lock/unlock from tasks
+- Do not include esp_lvgl_util.h; use esp_lvgl_port.h and esp32_s3_szp.h instead`,
 }

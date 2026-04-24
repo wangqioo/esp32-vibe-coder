@@ -57,7 +57,7 @@ Always include it as:
 \`\`\`c
 #include "esp32_s3_szp.h"
 \`\`\`
-**NEVER** use bsp/bsp.h, bsp_board.h, or any other path — those do not exist.
+**NEVER** use bsp/bsp.h, bsp_board.h, esp_lvgl_util.h, or any other path — those do not exist.
 The BSP is a pre-compiled component; no extra idf_component.yml entry needed.
 
 ## BSP Functions
