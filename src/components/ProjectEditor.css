@@ -50,6 +50,8 @@
 }
 .pe-tab.config { font-style: italic; }
 .pe-tab.config.active { border-bottom-color: var(--orange); }
+.pe-tab.reference { color: var(--blue); }
+.pe-tab.reference.active { border-bottom-color: var(--blue); }
 
 .pe-tab-close {
   font-size: 14px;
@@ -135,6 +137,7 @@
 }
 .pe-config-toggle:hover { color: var(--text-secondary); }
 .pe-config-toggle.open { color: var(--orange); }
+.pe-config-toggle.reference.open { color: var(--blue); }
 
 .pe-config-toggle-arrow { font-size: 10px; }
 
@@ -161,6 +164,11 @@
   font-size: 11px;
   padding: 3px 14px;
   flex-shrink: 0;
+}
+.pe-config-notice.reference {
+  background: var(--blue-muted);
+  border-bottom-color: var(--blue);
+  color: var(--blue);
 }
 
 /* Editor area */

@@ -28,10 +28,14 @@ function isConfigFile(path) {
     name === 'sdkconfig.defaults' || name === 'partitions.csv'
 }
 
-export default function ProjectEditor({ files, activeFile, onFileChange, onFileSelect, onCompile }) {
+export default function ProjectEditor({ files, referenceFiles = {}, activeFile, onFileChange, onFileSelect, onCompile }) {
   const [showConfig, setShowConfig] = useState(false)
+  const [showReference, setShowReference] = useState(false)
 
   const allFiles = Object.keys(files).filter(f => !f.startsWith('__'))
+  const referencePaths = Object.keys(referenceFiles)
+  const activeIsReference = activeFile ? referenceFiles[activeFile] !== undefined : false
+  const activeContent = activeIsReference ? referenceFiles[activeFile] : files[activeFile]
   const srcFiles = allFiles.filter(f => !isConfigFile(f))
   const cfgFiles = allFiles.filter(f => isConfigFile(f))
   const mainFile = srcFiles.find(f => f.endsWith('main.c') || f.endsWith('main.cpp')) || srcFiles[0]
@@ -108,8 +112,36 @@ export default function ProjectEditor({ files, activeFile, onFileChange, onFileS
         })}
       </div>
 
+      <div className="pe-config-bar reference">
+        <button
+          className={`pe-config-toggle reference ${showReference ? 'open' : ''}`}
+          onClick={() => setShowReference(v => !v)}
+        >
+          <span className="pe-config-toggle-arrow">{showReference ? '▾' : '▸'}</span>
+          板级库 / BSP
+          <span className="pe-config-count">{referencePaths.length}</span>
+        </button>
+        {showReference && referencePaths.map(path => {
+          const name = path.split('/').pop()
+          return (
+            <div
+              key={path}
+              className={`pe-tab reference ${activeFile === path ? 'active' : ''}`}
+              onClick={() => onFileSelect(path)}
+              title={path}
+            >
+              <span className="pe-tab-name">{name}</span>
+            </div>
+          )
+        })}
+      </div>
+
       {/* Config notice when editing a config file */}
-      {activeIsConfig && (
+      {activeIsReference ? (
+        <div className="pe-config-notice reference">
+          板级库只读 · 编译时由后台模板自动加入
+        </div>
+      ) : activeIsConfig && (
         <div className="pe-config-notice">
           ⚙ 由 Skills 自动生成 · 此处编辑将覆盖自动生成的版本
         </div>
@@ -117,13 +149,15 @@ export default function ProjectEditor({ files, activeFile, onFileChange, onFileS
 
       {/* Editor */}
       <div className="pe-editor-wrap">
-        {activeFile && files[activeFile] !== undefined ? (
+        {activeFile && activeContent !== undefined ? (
           <Editor
             key={activeFile}
             language={langFor(activeFile)}
             theme="vs-dark"
-            value={files[activeFile]}
-            onChange={val => onFileChange({ ...files, [activeFile]: val || '' }, activeFile)}
+            value={activeContent}
+            onChange={val => {
+              if (!activeIsReference) onFileChange({ ...files, [activeFile]: val || '' }, activeFile)
+            }}
             options={{
               fontSize: 13,
               fontFamily: "'JetBrains Mono', 'Fira Code', Consolas, monospace",
@@ -137,6 +171,8 @@ export default function ProjectEditor({ files, activeFile, onFileChange, onFileS
               padding: { top: 12, bottom: 12 },
               smoothScrolling: true,
               cursorSmoothCaretAnimation: 'on',
+              readOnly: activeIsReference,
+              domReadOnly: activeIsReference,
             }}
           />
         ) : (

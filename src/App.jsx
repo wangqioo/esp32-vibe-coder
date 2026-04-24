@@ -5,6 +5,9 @@ import SettingsModal from './components/SettingsModal'
 import CompilePanel from './components/CompilePanel'
 import ProjectEditor from './components/ProjectEditor'
 import { BOARDS, DEFAULT_BOARD_ID } from './context/boards'
+import bspHeader from '../compiler-service/template/components/esp32_s3_szp/esp32_s3_szp.h?raw'
+import bspSource from '../compiler-service/template/components/esp32_s3_szp/esp32_s3_szp.c?raw'
+import bspCmake from '../compiler-service/template/components/esp32_s3_szp/CMakeLists.txt?raw'
 import './App.css'
 
 const STORAGE_KEY = 'esp32-vibe-coder-settings'
@@ -25,6 +28,12 @@ void app_main(void)
     // 在这里开始你的应用...
 }
 `
+
+const BSP_REFERENCE_FILES = {
+  'components/esp32_s3_szp/esp32_s3_szp.h': bspHeader,
+  'components/esp32_s3_szp/esp32_s3_szp.c': bspSource,
+  'components/esp32_s3_szp/CMakeLists.txt': bspCmake,
+}
 
 function loadSettings() {
   try {
@@ -105,6 +114,7 @@ export default function App() {
         <div className="editor-pane">
           <ProjectEditor
             files={projectFiles}
+            referenceFiles={BSP_REFERENCE_FILES}
             activeFile={activeFile}
             onFileChange={(newFiles, newActive) => {
               setProjectFiles(newFiles)
