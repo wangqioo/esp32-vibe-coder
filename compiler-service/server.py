@@ -1,7 +1,7 @@
 """
 ESP32 Cloud Compiler Service
-POST /compile  — compile ESP-IDF project, streams build log via SSE
-GET  /health   — health check
+POST /compile  鈥?compile ESP-IDF project, streams build log via SSE
+GET  /health   鈥?health check
 """
 
 import os, uuid, shutil, subprocess, logging, json, base64
@@ -119,4 +119,5 @@ def compile_code():
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8765, debug=False)
+    app.run(host="0.0.0.0", port=8760, debug=False)
+

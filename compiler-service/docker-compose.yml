@@ -5,10 +5,11 @@ services:
     container_name: esp32-compiler
     restart: unless-stopped
     ports:
-      - "8766:8765"
-    # Compiler is CPU/memory heavy — limit resources
+      - "8760:8760"
+    # Compiler is CPU/memory heavy 鈥?limit resources
     deploy:
       resources:
         limits:
           cpus: "2"
           memory: 4g
+

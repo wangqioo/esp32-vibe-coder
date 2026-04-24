@@ -1,18 +1,20 @@
 /**
- * ESP32 Vibe Coder — OTA Bootstrap Firmware
- * 立创实战派ESP32-S3
+ * ESP32 Vibe Coder 鈥?OTA Bootstrap Firmware
+ * 绔嬪垱瀹炴垬娲綞SP32-S3
  *
- * 一次性 USB 烧录此固件后，后续所有更新均可通过 WiFi 推送。
+ * 涓€娆℃€?USB 鐑у綍姝ゅ浐浠跺悗锛屽悗缁墍鏈夋洿鏂板潎鍙€氳繃 WiFi 鎺ㄩ€併€?
  *
- * 功能：
- *   - 连接 WiFi（STA 模式）
- *   - HTTP 服务器监听 3232 端口
- *   - POST /ota     ← 接收 .bin 固件，写 OTA 分区，重启
- *   - GET  /info    ← 返回当前固件版本、IP、RSSI
- *   - GET  /ping    ← 浏览器心跳检测
- *   - WebSocket /log ← 实时日志流（供浏览器日志面板订阅）
+ * 鍔熻兘锛?
+ *   - 杩炴帴 WiFi锛圫TA 妯″紡锛?
+ *   - HTTP 鏈嶅姟鍣ㄧ洃鍚?3232 绔彛
+ *   - POST /ota     鈫?鎺ユ敹 .bin 鍥轰欢锛屽啓 OTA 鍒嗗尯锛岄噸鍚?
+ *   - GET  /info    鈫?杩斿洖褰撳墠鍥轰欢鐗堟湰銆両P銆丷SSI
+ *   - GET  /ping    鈫?娴忚鍣ㄥ績璺虫娴?
+ *   - WebSocket /log 鈫?瀹炴椂鏃ュ織娴侊紙渚涙祻瑙堝櫒鏃ュ織闈㈡澘璁㈤槄锛?
  */
 
+#include <stdarg.h>
+#include <stdio.h>
 #include <string.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -28,24 +30,28 @@
 #include "lwip/inet.h"
 #include "ota_ble.h"
 
-/* ── WiFi 凭据 ─────────────────────────────────────────────── */
+/* 鈹€鈹€ WiFi 鍑嵁 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€ */
 #define WIFI_SSID     CONFIG_OTA_WIFI_SSID
 #define WIFI_PASS     CONFIG_OTA_WIFI_PASSWORD
 #define OTA_PORT      3232
-/* ─────────────────────────────────────────────────────────── */
+/* 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€ */
 
 static const char *TAG = "vibe-ota";
 static EventGroupHandle_t s_wifi_events;
 #define CONNECTED_BIT BIT0
 
-/* ── WebSocket 日志 sink ─────────────────────────────────── */
+/* 鈹€鈹€ WebSocket 鏃ュ織 sink 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€ */
 static httpd_handle_t s_server = NULL;
 static int s_log_ws_fd = -1;
 
 static int ws_log_vprintf(const char *fmt, va_list args)
 {
     char buf[256];
-    int n = vsnprintf(buf, sizeof(buf), fmt, args);
+    va_list ws_args;
+    va_copy(ws_args, args);
+    int n = vsnprintf(buf, sizeof(buf), fmt, ws_args);
+    va_end(ws_args);
+
     if (s_log_ws_fd >= 0 && s_server) {
         httpd_ws_frame_t frame = {
             .type    = HTTPD_WS_TYPE_TEXT,
@@ -54,13 +60,18 @@ static int ws_log_vprintf(const char *fmt, va_list args)
         };
         httpd_ws_send_frame_async(s_server, s_log_ws_fd, &frame);
     }
-    return vprintf(fmt, args); /* 同时保留串口输出 */
+
+    va_list console_args;
+    va_copy(console_args, args);
+    int written = vprintf(fmt, console_args);
+    va_end(console_args);
+    return written;
 }
 
-/* ── OTA 处理器 ───────────────────────────────────────────── */
+/* 鈹€鈹€ OTA 澶勭悊鍣?鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€ */
 static esp_err_t ota_post_handler(httpd_req_t *req)
 {
-    /* CORS 预检 */
+    /* CORS 棰勬 */
     httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
 
     esp_ota_handle_t ota_handle;
@@ -70,7 +81,7 @@ static esp_err_t ota_post_handler(httpd_req_t *req)
         return ESP_FAIL;
     }
 
-    ESP_LOGI(TAG, "OTA start → partition: %s (offset 0x%08lx)",
+    ESP_LOGI(TAG, "OTA start 鈫?partition: %s (offset 0x%08lx)",
              ota_part->label, (unsigned long)ota_part->address);
 
     ESP_ERROR_CHECK(esp_ota_begin(ota_part, OTA_WITH_SEQUENTIAL_WRITES, &ota_handle));
@@ -91,7 +102,7 @@ static esp_err_t ota_post_handler(httpd_req_t *req)
         ESP_ERROR_CHECK(esp_ota_write(ota_handle, buf, chunk));
         received += chunk;
 
-        /* 进度日志（每 64KB 一次） */
+        /* 杩涘害鏃ュ織锛堟瘡 64KB 涓€娆★級 */
         if (received % (64 * 1024) < (int)sizeof(buf)) {
             ESP_LOGI(TAG, "OTA progress: %d / %d bytes (%.0f%%)",
                      received, content_len,
@@ -117,7 +128,7 @@ static esp_err_t ota_post_handler(httpd_req_t *req)
     return ESP_OK;
 }
 
-/* CORS 预检 */
+/* CORS 棰勬 */
 static esp_err_t options_handler(httpd_req_t *req)
 {
     httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
@@ -127,7 +138,7 @@ static esp_err_t options_handler(httpd_req_t *req)
     return ESP_OK;
 }
 
-/* ── /info ────────────────────────────────────────────────── */
+/* 鈹€鈹€ /info 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€ */
 static esp_err_t info_get_handler(httpd_req_t *req)
 {
     const esp_app_desc_t *desc = esp_app_get_description();
@@ -151,7 +162,7 @@ static esp_err_t info_get_handler(httpd_req_t *req)
     return ESP_OK;
 }
 
-/* ── /ping ────────────────────────────────────────────────── */
+/* 鈹€鈹€ /ping 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€ */
 static esp_err_t ping_get_handler(httpd_req_t *req)
 {
     httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
@@ -159,7 +170,7 @@ static esp_err_t ping_get_handler(httpd_req_t *req)
     return ESP_OK;
 }
 
-/* ── /log WebSocket ───────────────────────────────────────── */
+/* 鈹€鈹€ /log WebSocket 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€ */
 static esp_err_t log_ws_handler(httpd_req_t *req)
 {
     if (req->method == HTTP_GET) {
@@ -176,7 +187,7 @@ static esp_err_t log_ws_handler(httpd_req_t *req)
     return ESP_OK;
 }
 
-/* ── HTTP 服务器启动 ──────────────────────────────────────── */
+/* 鈹€鈹€ HTTP 鏈嶅姟鍣ㄥ惎鍔?鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€ */
 static void start_server(void)
 {
     httpd_config_t cfg = HTTPD_DEFAULT_CONFIG();
@@ -201,7 +212,7 @@ static void start_server(void)
     ESP_LOGI(TAG, "OTA server ready on port %d", OTA_PORT);
 }
 
-/* ── WiFi ─────────────────────────────────────────────────── */
+/* 鈹€鈹€ WiFi 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€ */
 static void wifi_event_handler(void *arg, esp_event_base_t base,
                                int32_t id, void *data)
 {
@@ -209,7 +220,7 @@ static void wifi_event_handler(void *arg, esp_event_base_t base,
         esp_wifi_connect();
     } else if (base == IP_EVENT && id == IP_EVENT_STA_GOT_IP) {
         ip_event_got_ip_t *e = (ip_event_got_ip_t *)data;
-        ESP_LOGI(TAG, "WiFi connected — IP: " IPSTR, IP2STR(&e->ip_info.ip));
+        ESP_LOGI(TAG, "WiFi connected 鈥?IP: " IPSTR, IP2STR(&e->ip_info.ip));
         xEventGroupSetBits(s_wifi_events, CONNECTED_BIT);
     }
 }
@@ -242,18 +253,19 @@ static void wifi_init(void)
     xEventGroupWaitBits(s_wifi_events, CONNECTED_BIT, false, true, portMAX_DELAY);
 }
 
-/* ── app_main ─────────────────────────────────────────────── */
+/* 鈹€鈹€ app_main 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€ */
 void app_main(void)
 {
     ESP_ERROR_CHECK(nvs_flash_init());
     wifi_init();
     start_server();
-    ble_ota_start(); /* BLE OTA — 无 WiFi 时的备用烧录通道 */
+    ble_ota_start(); /* BLE OTA 鈥?鏃?WiFi 鏃剁殑澶囩敤鐑у綍閫氶亾 */
 
-    /* 心跳日志 */
+    /* 蹇冭烦鏃ュ織 */
     while (1) {
         vTaskDelay(pdMS_TO_TICKS(30000));
         ESP_LOGI(TAG, "OTA server alive, heap free: %lu bytes",
                  (unsigned long)esp_get_free_heap_size());
     }
 }
+
