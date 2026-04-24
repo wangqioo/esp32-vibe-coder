@@ -1,11 +1,11 @@
 """
 ESP32 Cloud Compiler Service
-POST /compile  鈥?compile ESP-IDF project, streams build log via SSE
-GET  /health   鈥?health check
+POST /compile - compile ESP-IDF project, streams build log via SSE
+GET  /health  - health check
 """
 
 import os, uuid, shutil, subprocess, logging, json, base64
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from flask import Flask, request, Response, jsonify
 
 app = Flask(__name__)
@@ -16,15 +16,44 @@ TEMPLATE_DIR = Path(os.environ.get("TEMPLATE_DIR", "/compiler/template"))
 BUILD_BASE   = Path("/tmp/builds")
 IDF_PATH     = Path(os.environ.get("IDF_PATH", "/opt/esp/idf"))
 
-BUILD_BASE.mkdir(exist_ok=True)
+BUILD_BASE.mkdir(parents=True, exist_ok=True)
+
+ALLOWED_SUFFIXES = {".c", ".cc", ".cpp", ".cxx", ".h", ".hpp", ".s", ".S"}
+ALLOWED_FILENAMES = {"CMakeLists.txt", "sdkconfig.defaults", "idf_component.yml", "partitions.csv"}
+
+
+def validate_project_path(build_dir: Path, rel_path: str) -> Path:
+    if not isinstance(rel_path, str) or not rel_path.strip():
+        raise ValueError("invalid project file path")
+
+    normalized = rel_path.replace("\\", "/")
+    path = PurePosixPath(normalized)
+    if path.is_absolute() or ".." in path.parts:
+        raise ValueError(f"unsafe project file path: {rel_path}")
+
+    name = path.name
+    if name not in ALLOWED_FILENAMES and path.suffix not in ALLOWED_SUFFIXES:
+        raise ValueError(f"unsupported project file type: {rel_path}")
+
+    target = (build_dir / Path(*path.parts)).resolve()
+    root = build_dir.resolve()
+    try:
+        target.relative_to(root)
+    except ValueError as exc:
+        raise ValueError(f"unsafe project file path: {rel_path}") from exc
+    return target
 
 
 def create_project(build_dir: Path, code: str, project_files: dict):
     shutil.copytree(TEMPLATE_DIR, build_dir)
-    main_file = project_files.pop("__mainFile", "main.c")
-    (build_dir / "main" / main_file).write_text(code)
+    main_file = project_files.get("__mainFile", "main.c")
+    main_target = validate_project_path(build_dir / "main", main_file)
+    main_target.write_text(code)
+
     for rel_path, content in project_files.items():
-        target = build_dir / rel_path
+        if rel_path == "__mainFile":
+            continue
+        target = validate_project_path(build_dir, rel_path)
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(content)
         log.info(f"  wrote: {rel_path}")
@@ -120,4 +149,3 @@ def compile_code():
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8760, debug=False)
-

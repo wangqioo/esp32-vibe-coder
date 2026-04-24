@@ -71,8 +71,9 @@ npm run dev
 ```bash
 cd compiler-service
 docker build -t esp32-compiler .
-docker run -d -p 8766:8766 esp32-compiler
-# 在 Web IDE 编译面板填入 http://<服务器IP>:8766
+docker run -d -p 8760:8760 esp32-compiler
+# 开发环境会通过 Vite 代理 /compile 到 http://127.0.0.1:8760
+# 生产环境由 nginx 将 /compile 代理到 http://127.0.0.1:8760
 ```
 
 ### OTA 引导固件（首次烧录）
@@ -89,6 +90,7 @@ idf.py build flash monitor
 ## 使用说明
 
 1. 点击右上角 **⚙ 配置 AI**，填入 API Base URL、API Key 和模型名称
+   > API Key 仅保存在当前浏览器本地；请勿在共享或不可信设备上保存真实密钥。
 2. 在右侧聊天框用中文描述需求：
    - `帮我写一个点亮屏幕显示 Hello World 的完整例程`
    - `帮我写一个读取 QMI8658 加速度计数据的代码`

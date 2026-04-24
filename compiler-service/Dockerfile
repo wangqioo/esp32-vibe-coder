@@ -3,21 +3,14 @@
 FROM espressif/idf:v5.4
 
 # Install Python deps for the API server
-RUN pip install flask gunicorn --break-system-packages
+RUN . /opt/esp/idf/export.sh && python -m pip install flask gunicorn --break-system-packages
 
 WORKDIR /compiler
 
-# Copy project template
+# Copy project template with the vendored BSP component
 COPY template/ ./template/
 
-# Vendor the BSP component directly into the template so builds never need
-# to fetch from GitHub at runtime (China servers often can't reach GitHub).
-RUN git clone --depth 1 https://github.com/Lzw655/esp32_s3_szp.git \
-        /compiler/template/components/esp32_s3_szp 2>&1 | tail -5 && \
-    echo "BSP component vendored OK" || echo "WARNING: BSP clone failed 鈥?builds may not work"
-
 # Pre-warm the cmake/component cache so first user build is faster.
-# Uses the now-local BSP so no network needed.
 RUN cd /tmp && \
     cp -r /compiler/template warmup && \
     . /opt/esp/idf/export.sh && \
