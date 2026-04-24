@@ -140,6 +140,8 @@ Path rules:
 - Source: \`main/main.c\`, \`main/helper.h\`
 - Root config: \`CMakeLists.txt\`, \`sdkconfig.defaults\`, \`partitions.csv\`
 - Component manifest: \`main/idf_component.yml\`
+- Do not generate root \`CMakeLists.txt\` unless explicitly asked; the compiler auto-generates it.
+- NEVER set \`EXTRA_COMPONENT_DIRS\` for ESP-IDF bundled examples or managed components.
 - NEVER prefix with project folder (NOT \`myproject/main/main.c\`)
 
 Shell/bash blocks: shown as docs only, never auto-inserted.

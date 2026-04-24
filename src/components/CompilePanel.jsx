@@ -79,6 +79,7 @@ export default function CompilePanel({ projectFiles: sourceProp, selectedSkills,
     return cfg
   })()
   const projectFiles = { ...generatedCfg, ...(sourceProp || {}) }
+  const compileProjectFiles = { ...projectFiles, ...generatedCfg }
 
   useEffect(() => {
     if (!otaIp) return
@@ -97,9 +98,9 @@ export default function CompilePanel({ projectFiles: sourceProp, selectedSkills,
     setBuildLog([])
     setFirmware(null)
     setStatus('正在连接编译服务器...')
-    const mainPath = Object.keys(projectFiles).find(k => k.endsWith('main.c') || k.endsWith('main.cpp')) || 'main/main.c'
-    const code = projectFiles[mainPath] || ''
-    const configFiles = Object.fromEntries(Object.entries(projectFiles).filter(([k]) => !k.startsWith('__') && k !== mainPath))
+    const mainPath = Object.keys(compileProjectFiles).find(k => k.endsWith('main.c') || k.endsWith('main.cpp')) || 'main/main.c'
+    const code = compileProjectFiles[mainPath] || ''
+    const configFiles = Object.fromEntries(Object.entries(compileProjectFiles).filter(([k]) => !k.startsWith('__') && k !== mainPath))
     try {
       const blob = await compileFirmware(code, configFiles, setStatus, line => {
         setBuildLog(prev => [...prev, line])
